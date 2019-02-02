@@ -1,0 +1,19 @@
+cron:
+- description: "get OAX forecast"
+  url: /OAX/forecasts/record
+  schedule: every day 23:50
+  retry_parameters:
+    min_backoff_seconds: 90
+    max_doublings: 5
+- description: "get OAX observations"
+  url: /OAX/observations/record
+  schedule: every day 23:50
+  retry_parameters:
+    min_backoff_seconds: 90
+    max_doublings: 5
+- description: "get OAX rawforecast"
+  url: /OAX/rawForecasts/record
+  schedule: every day 23:00
+  retry_parameters:
+    min_backoff_seconds: 90
+    max_doublings: 5
