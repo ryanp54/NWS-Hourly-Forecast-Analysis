@@ -3,6 +3,7 @@ import json
 import requests
 import pdb
 
+from functools import wraps
 from datetime import date, datetime, timedelta
 
 from database_setup import RawForecast, Weather, Observation, Forecast, RecordError
@@ -19,6 +20,14 @@ app.config['JSONIFY_PRETTYPRINT_REGULAR'] = True
 grid_point = 'OAX/76,56'
 station_code = 'KMLE'
 headers = {'user-agent': 'site:weather2019.appspot.com; contact-email:ryanp54@yahoo.com'}
+
+def cron_only(f):
+	@wraps(f)
+	def restricted2cron(*args, **kwargs):
+		if not request.headers.get('X-Appengine-Cron'):
+			return 'Forbidden', 403
+		return f(*args, **kwargs)
+	return restricted2cron
 
 @app.route('/')
 @app.route('/index')
@@ -73,14 +82,18 @@ def crawl_forecast(prop, values, ndb_Forecasts):
 
 @app.route('/test')
 def test():
-	pdb.set_trace()
+	if request.headers.get('Host') != 'localhost:8080':
+		return 'Forbidden', 403
+	else:
+		pdb.set_trace()
+	return 'Success'
 
 @app.route('/OAX/forecasts/record')
 def record_forecast():
 	r = requests.get('https://api.weather.gov/gridpoints/' + grid_point, headers=headers)
 	grid_data = r.json()['properties']
 	made_at = iso2datetime(grid_data['updateTime'])
-	if (made_at < days_ago(1)):
+	if made_at < days_ago(1):
 		stale = RecordError(error_message='Forecast record fail: forecast was not current.')
 		stale.put()
 		r.status_code = 500
@@ -92,10 +105,10 @@ def record_forecast():
 	return jsonify(r.json()), r.status_code
 
 @app.route('/OAX/observations/record')
+@cron_only
 def record_observation():
 	new_obs = []
 	last_ob = iso2datetime(last_observation().key.id())
-
 	r = requests.get(
 		'https://api.weather.gov/stations/' + station_code + '/observations?end='
 		+ days_ago(1).isoformat().split('.')[0] + 'Z&start='
