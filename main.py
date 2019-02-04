@@ -89,6 +89,7 @@ def test():
 	return 'Success'
 
 @app.route('/OAX/forecasts/record')
+@cron_only
 def record_forecast():
 	r = requests.get('https://api.weather.gov/gridpoints/' + grid_point, headers=headers)
 	grid_data = r.json()['properties']
