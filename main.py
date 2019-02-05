@@ -89,7 +89,7 @@ def test():
 	return 'Success'
 
 @app.route('/OAX/forecasts/record')
-@cron_only
+#@cron_only
 def record_forecast():
 	r = requests.get('https://api.weather.gov/gridpoints/' + grid_point, headers=headers)
 	grid_data = r.json()['properties']
@@ -106,7 +106,7 @@ def record_forecast():
 	return jsonify(r.json()), r.status_code
 
 @app.route('/OAX/observations/record')
-@cron_only
+#@cron_only
 def record_observation():
 	new_obs = []
 	last_ob = iso2datetime(last_observation().key.id())
@@ -120,9 +120,14 @@ def record_observation():
 		observations_data = r.json()['features']
 		new_obs = [key.id() for key in put_hourly_obs(observations_data, last_ob)]
 
+	if len(new_obs) == 0:
+		no_obs = RecordError(error_message='Observation record fail: no new observations found.')
+		no_obs.put()
+
 	return jsonify(newObservations=new_obs), r.status_code
 
 @app.route('/OAX/rawForecasts/record')
+#@cron_only
 def record_rawforecast():
 	r = requests.get('https://api.weather.gov/gridpoints/' + grid_point, headers=headers)
 	new_forecast = RawForecast(date=date.today().isoformat(), forecast=r.json())
@@ -131,8 +136,8 @@ def record_rawforecast():
 
 	return jsonify(r.json()), r.status_code
 
-@app.route('/OAX/rawForecasts/history')
-def get_rawforecasts_history():
+@app.route('/OAX/rawForecasts/')
+def get_rawforecasts():
 	forecasts = []
 	for forecast in RawForecast.query().order(RawForecast.date):
 		forecasts.append({'date': forecast.date, 'forecast': forecast.forecast})
