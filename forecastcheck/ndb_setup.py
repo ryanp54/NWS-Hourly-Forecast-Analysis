@@ -1,10 +1,11 @@
-import os
-import sys
-import pdb
-
+""" Setup ndb models."""
 from google.appengine.ext import ndb
 
 class ConvIntegerProperty(ndb.IntegerProperty):
+    """Define special converting IntegerProperty.
+    
+    Override _validate to convert float to int if rounding error is low.
+    """
     def _validate(self, value):
         coerced_value = int(round(value))
         if abs(coerced_value - value) < 0.001:
@@ -14,10 +15,18 @@ class ConvIntegerProperty(ndb.IntegerProperty):
             return None
 
 class RawForecast(ndb.Model):
-    date = ndb.StringProperty()
+    """Model to hold raw forecast JSON."""
+    date = ndb.StringProperty() # Date forecast was made
     forecast = ndb.JsonProperty()
 
 class Weather(ndb.Model):
+    """Model to hold various weather properties.
+
+    Use as StructuredProperty in Forecast and Observation.
+    Attribute cloud_cover is integer in Forecast, but string in
+    Observation.
+    """
+    
     weather = ndb.StringProperty('w')
     all_weather = ndb.StringProperty('aw')
     temperature = ndb.FloatProperty('t')
@@ -30,14 +39,22 @@ class Weather(ndb.Model):
     wind_speed = ndb.FloatProperty('ws')
 
 class Forecast(ndb.Model):
+    """Model to hold hourly weather forecast."""
     predicted_weather = ndb.StructuredProperty(Weather, 'pw')
     valid_time = ndb.StringProperty('t')
     made = ndb.StringProperty('ot')
     lead_days = ndb.IntegerProperty('d')
 
 class Observation(ndb.Model):
+    """Model to hold weather observation.
+
+    nws_parse expects entities to be created with id=time.
+    time attribute is included for complex queries not supported by
+    keys by default.
+    """
     time = ndb.StringProperty('t')
     observed_weather = ndb.StructuredProperty(Weather, 'ow')
 
 class RecordError(ndb.Model):
+    """Model to record error message."""
     error_message = ndb.StringProperty()
