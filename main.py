@@ -25,7 +25,10 @@ headers = {'user-agent': 'site:weather2019.appspot.com; contact-email:ryanp54@ya
 def cron_only(f):
 	@wraps(f)
 	def restricted2cron(*args, **kwargs):
-		if not request.headers.get('X-Appengine-Cron'):
+		if (
+			request.headers.get('Host') != 'localhost:8080'
+			and not request.headers.get('X-Appengine-Cron')
+		):
 			return 'Forbidden', 403
 		return f(*args, **kwargs)
 	return restricted2cron
@@ -44,7 +47,7 @@ def test():
 	return 'Success'
 
 @app.route('/OAX/forecasts/record')
-#@cron_only
+@cron_only
 def record_forecast():
 	resp = requests.get('https://api.weather.gov/gridpoints/' + grid_point, headers=headers)
 	grid_data = GridData(resp.json()['properties'])
@@ -57,7 +60,7 @@ def record_forecast():
 	return resp
 
 @app.route('/OAX/observations/record')
-#@cron_only
+@cron_only
 def record_observation():
 	last_ob_t = ObservationData.last_ndb_time()
 	resp = requests.get(
@@ -75,7 +78,7 @@ def record_observation():
 	return resp
 
 @app.route('/OAX/rawForecasts/record')
-#@cron_only
+@cron_only
 def record_rawforecast():
 	r = requests.get('https://api.weather.gov/gridpoints/' + grid_point, headers=headers)
 	new_forecast = RawForecast(date=date.today().isoformat(), forecast=r.json())

@@ -88,6 +88,7 @@ class ObservationData(object):
 		keys = ndb.put_multi(self.ndb_obs)
 		return map(lambda key: key.id(), keys)
 
+# Utility functions for parsing NWS station observation data
 
 def to_Observation(ob):
 	time = ob['time'].isoformat()
@@ -107,8 +108,6 @@ def to_Observation(ob):
 			wind_speed = ob['windSpeed']['value']
 		)
 	)
-
-# Utility functions for parsing NWS station observation data
 
 def parse_multiple(records, prop_name):
 	values = ''
