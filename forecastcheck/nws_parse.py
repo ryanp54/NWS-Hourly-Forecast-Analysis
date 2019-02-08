@@ -25,7 +25,7 @@ class GridData(object):
 		if made_time.hour > 12:
 			self.start_d += timedelta(days=1)
 		self.end_t = self.start_d + timedelta(days=7)
-		if self.end_t < data_end:
+		if self.end_t > data_end:
 			self.end_t = data_end
 		self.data = grid_data
 
@@ -33,6 +33,7 @@ class GridData(object):
 		time_range = (self.end_t - self.start_d)
 		hours = time_range.days*24 + time_range.seconds/3600
 		self.ndb_forecasts = {}
+		pdb.set_trace()
 		for i in range(hours):
 			cur_time = (self.start_d + timedelta(hours=i)).isoformat()
 			lead_days = (24 + i)/24
@@ -73,11 +74,11 @@ class ObservationData(object):
 			last_ndb_time = self.last_ndb_time()
 		
 		self.last_ndb_t = last_ndb_time
-		self.obs_data = observation_data
+		self.data = observation_data
 
 	def crawl_hourly_obs(self):
 		self.ndb_obs = []
-		for ob in self.obs_data:
+		for ob in self.data:
 			hour = filter2hourly(ob)
 			if hour and hour > self.last_ndb_t:
 				ob['properties']['time'] = hour
