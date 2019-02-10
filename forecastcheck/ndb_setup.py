@@ -1,7 +1,9 @@
 """ Setup ndb models."""
+__all__ = ['RawForecast', 'Weather', 'Observation', 'Forecast', 'RecordError']
+
 from google.appengine.ext import ndb
 
-class ConvIntegerProperty(ndb.IntegerProperty):
+class _ConvIntegerProperty(ndb.IntegerProperty):
     """Define special converting IntegerProperty.
     
     Override _validate to convert float to int if rounding error is low.
@@ -34,8 +36,8 @@ class Weather(ndb.Model):
     cloud_cover = ndb.GenericProperty('cc')
     precip_1hr = ndb.FloatProperty('p1')
     precip_6hr = ndb.FloatProperty('p6')
-    precip_chance = ConvIntegerProperty('pc')
-    wind_dir = ConvIntegerProperty('wd')
+    precip_chance = _ConvIntegerProperty('pc')
+    wind_dir = _ConvIntegerProperty('wd')
     wind_speed = ndb.FloatProperty('ws')
 
 class Forecast(ndb.Model):

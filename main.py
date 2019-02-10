@@ -1,6 +1,4 @@
 import logging
-import json
-import requests
 import pdb
 
 from functools import wraps
@@ -9,9 +7,10 @@ from datetime import date, datetime, timedelta
 from forecastcheck.ndb_setup import RawForecast, Weather, Observation, Forecast, RecordError
 from forecastcheck.nws_parse import	GridData, ObservationData
 
+from requests import get
 from google.appengine.ext import ndb
-from flask import (Flask, request, send_from_directory, redirect,url_for, jsonify,
-	make_response, current_app)
+from flask import (Flask, request, send_from_directory, redirect,url_for,
+	jsonify, make_response, current_app)
 from requests_toolbelt.adapters import appengine
 appengine.monkeypatch()
 
@@ -49,28 +48,28 @@ def test():
 @app.route('/OAX/forecasts/record')
 @cron_only
 def record_forecast():
-	resp = requests.get('https://api.weather.gov/gridpoints/' + grid_point, headers=headers)
+	resp = get('https://api.weather.gov/gridpoints/' + grid_point, headers=headers)
 	grid_data = GridData(resp.json()['properties'])
 	if grid_data.made_t < days_ago(1):
 		stale = RecordError(error_message='Forecast record fail: forecast was not current.')
 		stale.put()
 		resp.status_code = 500
 	elif resp.status_code >= 200 and resp.status_code < 300:
-		resp = jsonify(grid_data.to_ndb())
+		resp = jsonify(map(lambda key: key.id(), grid_data.to_ndb()))
 	return resp
 
 @app.route('/OAX/observations/record')
 @cron_only
 def record_observation():
 	last_ob_t = ObservationData.last_ndb_time()
-	resp = requests.get(
+	resp = get(
 		'https://api.weather.gov/stations/' + station_code + '/observations?end='
 		+ days_ago(1).isoformat().split('.')[0] + 'Z&start='
 		+ last_ob_t.isoformat().split('.')[0] + 'Z',
 		headers=headers)
 	if resp.status_code >= 200 and resp.status_code < 300:
 		obs_data = ObservationData(resp.json()['features'])
-		resp = jsonify(obs_data.to_ndb())
+		resp = jsonify(map(lambda key: key.id(), obs_data.to_ndb()))
 	if len(obs_data.ndb_obs) == 0:
 		no_obs = RecordError(error_message='Observation record fail: no new observations found.')
 		no_obs.put()
@@ -80,7 +79,7 @@ def record_observation():
 @app.route('/OAX/rawForecasts/record')
 @cron_only
 def record_rawforecast():
-	r = requests.get('https://api.weather.gov/gridpoints/' + grid_point, headers=headers)
+	r = get('https://api.weather.gov/gridpoints/' + grid_point, headers=headers)
 	new_forecast = RawForecast(date=date.today().isoformat(), forecast=r.json())
 	if r.status_code >= 200 and r.status_code < 300:
 		new_forecast.put()
