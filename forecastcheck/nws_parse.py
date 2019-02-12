@@ -69,15 +69,15 @@ class GridData(object):
 	# For each weather prop, crawl and set the forecasted values 
 	# until end of ndb_forecasts 7 day period
 	def _crawl_hourlies(self):
-		for key, prop in GridData._props_to_ndb:
-			for val in self.data[key]['values']:
-				if prop == 'all_weather':
+		for prop_js, prop_ndb in GridData._props_to_ndb:
+			for val in self.data[prop_js]['values']:
+				if prop_ndb == 'all_weather':
 					val['value'] = _concat_weather(val['value'])
 				start_t, end_t = _get_start_and_end_t(val['validTime'])
 				while start_t < end_t:
 					if start_t.isoformat() in self.ndb_forecasts:
 						weather = self.ndb_forecasts[start_t.isoformat()].predicted_weather
-						setattr(weather, prop, val['value'])
+						setattr(weather, prop_ndb, val['value'])
 					start_t += timedelta(hours=1)
 
 	def to_ndb(self):
