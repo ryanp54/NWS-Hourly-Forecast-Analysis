@@ -4,6 +4,7 @@ This module contains 2 classes for parsing and recording a common
 group of weather properties found in NWS API data:
 """
 __all__ = ['GridData', 'ObservationData']
+import pdb
 from datetime import datetime, timedelta
 
 from google.appengine.ext import ndb
@@ -35,6 +36,7 @@ class GridData(object):
 		('skyCover', 'cloud_cover'),
 		('quantitativePrecipitation', 'precip_6hr'),
 		('probabilityOfPrecipitation', 'precip_chance'),
+		('weather', 'all_weather'),
 		('windDirection', 'wind_dir'),
 		('windSpeed', 'wind_speed')))
 
@@ -65,10 +67,12 @@ class GridData(object):
 				predicted_weather=Weather())
 
 	# For each weather prop, crawl and set the forecasted values 
-	# until end of ndb_forecasts period
+	# until end of ndb_forecasts 7 day period
 	def _crawl_hourlies(self):
 		for key, prop in GridData._props_to_ndb:
 			for val in self.data[key]['values']:
+				if prop == 'all_weather':
+					val['value'] = _concat_weather(val['value'])
 				start_t, end_t = _get_start_and_end_t(val['validTime'])
 				while start_t < end_t:
 					if start_t.isoformat() in self.ndb_forecasts:
@@ -188,6 +192,19 @@ def _get_start_and_end_t(nws_iso_str):
 	start_time = _iso2datetime(time_str)
 	end_time = start_time + _parse_duration(duration_str)
 	return start_time, end_time
+
+def _concat_weather(entries):
+	result = ''
+	for entry in entries:
+		for key in ['coverage', 'intensity', 'weather']:
+			val = entry[key]
+			if val:
+				result += ' ' + val
+		result += ','
+	# Return result with leading space and trailing comma removed
+	if result.count(',') > 1:
+		pdb.set_trace()
+	return result[1:-1]
 
 # General utility functions
 
