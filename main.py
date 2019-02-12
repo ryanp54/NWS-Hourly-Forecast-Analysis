@@ -58,6 +58,23 @@ def record_forecast():
 		resp = jsonify(map(lambda key: key.id(), grid_data.to_ndb()))
 	return resp
 
+@app.route('/OAX/forecasts/')
+def get_forecasts():
+	query = Forecast.query()
+	for param, val in request.args.items():
+		try:
+			prop = getattr(Forecast, param)
+		except AttributeError:
+			pass
+		else:
+			if prop is Forecast.lead_days:
+				val = int(val)
+			query = query.filter(prop == val)
+
+	resp = map(lambda result: result.to_dict(), query.fetch(168))
+
+	return jsonify(sorted(resp, key=lambda x: [x['valid_time'], x['lead_days']]))
+
 @app.route('/OAX/observations/record')
 @cron_only
 def record_observation():
