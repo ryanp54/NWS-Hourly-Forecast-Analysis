@@ -103,6 +103,15 @@ def record_rawforecast():
 
 	return jsonify(r.json()), r.status_code
 
+@app.route('/OAX/forecasts/delete')
+@cron_only
+def delete_forecasts():
+	forecasts = []
+	for forecast in Forecast.query().order(-Forecast.valid_time).fetch(168):
+		forecast.key.delete()
+
+	return 'Deleted 168 forecasts.'
+
 @app.route('/OAX/rawForecasts/')
 def get_rawforecasts():
 	forecasts = []

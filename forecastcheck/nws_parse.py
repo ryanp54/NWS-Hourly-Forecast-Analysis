@@ -68,28 +68,51 @@ class GridData(object):
 
 	# For each weather prop, crawl and set the forecasted values 
 	# until end of ndb_forecasts 7 day period
-	def _crawl_hourlies(self):
+	def _crawl_forecast(self):
 		for prop_js, prop_ndb in GridData._props_to_ndb:
-			for val in self.data[prop_js]['values']:
-				if prop_ndb == 'all_weather':
-					val['value'] = _concat_weather(val['value'])
-				start_t, end_t = _get_start_and_end_t(val['validTime'])
-				while start_t < end_t:
-					if start_t.isoformat() in self.ndb_forecasts:
-						weather = self.ndb_forecasts[start_t.isoformat()].predicted_weather
-						setattr(weather, prop_ndb, val['value'])
-					start_t += timedelta(hours=1)
+			if prop_ndb == 'precip_6hr':
+				self._crawl_precip(prop_js, prop_ndb)
+			else:
+				self._crawl_prop(prop_js, prop_ndb)
+
+	def _crawl_precip(self, prop_js, prop_ndb):
+		# Keep precip_3hr value to create a precip_6hr value if
+		# appropriate 2nd precip_3hr value if encountered next iteration
+		precip_3hr = {'value': 0.0, 'valid_t_iso': None}
+		for val in self.data[prop_js]['values']:
+			start_t, end_t = _get_start_and_end_t(val['validTime'])
+			hours = (end_t - start_t).seconds/3600
+			weather = self.ndb_forecasts[end_t.isoformat()].predicted_weather
+			if hours == 6:
+				weather.precip_6hr = val['value']
+			elif hours == 3:
+				if end_t.hour % 6 != 0:
+					precip_3hr['value'] = val['value']
+					precip_3hr['valid_t_iso'] = end_t.isoformat()
+				elif start_t.isoformat() == precip_3hr['valid_t_iso']:
+					weather.precip_6hr = val['value'] + precip_3hr['value']
+
+	def _crawl_prop(self, prop_js, prop_ndb):
+		for val in self.data[prop_js]['values']:
+			if prop_ndb == 'all_weather':
+				val['value'] = _concat_weather(val['value'])
+
+			start_t, end_t = _get_start_and_end_t(val['validTime'])
+			while start_t < end_t:
+				if start_t.isoformat() in self.ndb_forecasts:
+					weather = self.ndb_forecasts[start_t.isoformat()].predicted_weather
+					setattr(weather, prop_ndb, val['value'])
+				start_t += timedelta(hours=1)
 
 	def to_ndb(self):
 		""" Parse and put NDB Forecasts. Return Keys."""
 
 		self._init_Forecasts()
-		self._crawl_hourlies()
+		self._crawl_forecast()
 		return ndb.put_multi(self.ndb_forecasts.values())
 		
 class ObservationData(object):
 	"""Parse observation data into hourly NDB Forecast entities.
-
 	
 	Takes the value of the 'features' property from the NWS 
 	stations observations endpoint to instantiate. Optionally can
@@ -99,6 +122,7 @@ class ObservationData(object):
 
 	Attributes:
 		last_ndb_time (datetime): Time of most recent Observation
+		data: JSON data.
 	"""
 
 	@staticmethod
@@ -118,7 +142,7 @@ class ObservationData(object):
 	def _crawl_hourly_obs(self):
 		self.ndb_obs = []
 		for ob in self.data:
-			# Skips adding the Observation if the time is not close
+			# Skip ceating Observation if the time is not close
 			# to the top of the hour
 			hour = _filter2hourly(ob)
 			if hour and hour > self.last_ndb_t:
@@ -193,6 +217,7 @@ def _get_start_and_end_t(nws_iso_str):
 	end_time = start_time + _parse_duration(duration_str)
 	return start_time, end_time
 
+# Condense weather list of dicts to string
 def _concat_weather(entries):
 	result = ''
 	for entry in entries:
@@ -202,8 +227,6 @@ def _concat_weather(entries):
 				result += ' ' + val
 		result += ','
 	# Return result with leading space and trailing comma removed
-	if result.count(',') > 1:
-		pdb.set_trace()
 	return result[1:-1]
 
 # General utility functions
