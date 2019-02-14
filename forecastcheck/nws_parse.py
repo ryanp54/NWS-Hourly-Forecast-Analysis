@@ -77,7 +77,7 @@ class GridData(object):
 
 	def _crawl_precip(self, prop_js, prop_ndb):
 		# Keep precip_3hr value to create a precip_6hr value if
-		# appropriate 2nd precip_3hr value if encountered next iteration
+		# appropriate 2nd precip_3hr is encountered next iteration
 		precip_3hr = {'value': 0.0, 'valid_t_iso': None}
 		for val in self.data[prop_js]['values']:
 			start_t, end_t = _get_start_and_end_t(val['validTime'])

@@ -32,6 +32,7 @@ def cron_only(f):
 		return f(*args, **kwargs)
 	return restricted2cron
 
+
 @app.route('/')
 @app.route('/index')
 def welcome():
@@ -113,11 +114,12 @@ def delete_forecasts():
 	return 'Deleted 168 forecasts.'
 
 @app.route('/OAX/rawForecasts/')
-def get_rawforecasts():
-	forecasts = []
-	for forecast in RawForecast.query().order(RawForecast.date):
-		forecasts.append({'date': forecast.date, 'forecast': forecast.forecast})
-
-	return jsonify(forecasts=forecasts)
+@app.route('/OAX/rawForecasts/<date_made>')
+def get_rawforecasts(date_made=None):
+	if date_made:
+		forecast = RawForecast.query(RawForecast.date == date_made).get()
+	else:
+		forecast = RawForecast.query().order(-RawForecast.date).get()
+	return jsonify(forecast={'date': forecast.date, 'forecast': forecast.forecast})
 
 def days_ago(days): return datetime.utcnow() - timedelta(days=days)
