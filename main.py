@@ -76,6 +76,15 @@ def get_forecasts():
 
 	return jsonify(sorted(resp, key=lambda x: [x['valid_time'], x['lead_days']]))
 
+@app.route('/OAX/forecasts/delete')
+@cron_only
+def delete_forecasts():
+	forecasts = []
+	for forecast in Forecast.query().order(-Forecast.valid_time).fetch(168):
+		forecast.key.delete()
+
+	return 'Deleted 168 forecasts.'
+	
 @app.route('/OAX/observations/record')
 @cron_only
 def record_observation():
@@ -104,14 +113,13 @@ def record_rawforecast():
 
 	return jsonify(r.json()), r.status_code
 
-@app.route('/OAX/forecasts/delete')
-@cron_only
-def delete_forecasts():
-	forecasts = []
-	for forecast in Forecast.query().order(-Forecast.valid_time).fetch(168):
-		forecast.key.delete()
+@app.route('/OAX/rawForecasts/convert/<date_made>')
+def conv_rawforecasts(date_made):
+	raw_forecast = RawForecast.query(RawForecast.date == date_made).get()
+	grid_data = GridData(raw_forecast.forecast['properties'])
+	resp = jsonify(map(lambda key: key.id(), grid_data.to_ndb()))
 
-	return 'Deleted 168 forecasts.'
+	return resp
 
 @app.route('/OAX/rawForecasts/')
 @app.route('/OAX/rawForecasts/<date_made>')
