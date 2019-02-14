@@ -82,7 +82,12 @@ class GridData(object):
 		for val in self.data[prop_js]['values']:
 			start_t, end_t = _get_start_and_end_t(val['validTime'])
 			hours = (end_t - start_t).seconds/3600
-			weather = self.ndb_forecasts[end_t.isoformat()].predicted_weather
+			ndb_forecast = self.ndb_forecasts.get(end_t.isoformat())
+			if ndb_forecast:
+				weather = ndb_forecast.predicted_weather
+			else:
+				continue
+				
 			if hours == 6:
 				weather.precip_6hr = val['value']
 			elif hours == 3:
