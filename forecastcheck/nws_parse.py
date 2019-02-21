@@ -42,11 +42,11 @@ class GridData(object):
 
 	def __init__(self, grid_data):
 		data_end = _get_start_and_end_t(grid_data['validTimes'])[1]
-		made_time = _iso2datetime(grid_data['updateTime'])
-		self.start_d = datetime(made_time.year, made_time.month, made_time.day)
-		self.made_t = made_time
-		if made_time.hour > 12:
-			self.start_d += timedelta(days=1)
+		made_t = _iso2datetime(grid_data['updateTime'])
+		self.made_t = made_t
+		# Round start_d forward to noon or midnight
+		self.start_d = datetime(made_t.year, made_t.month, made_t.day, 12)
+		self.start_d += timedelta(days=0.5*round(made_t.hours/24.0))
 		self.end_t = self.start_d + timedelta(days=7)
 		if self.end_t > data_end:
 			self.end_t = data_end
@@ -87,7 +87,7 @@ class GridData(object):
 				weather = ndb_forecast.predicted_weather
 			else:
 				continue
-				
+
 			if hours == 6:
 				weather.precip_6hr = val['value']
 			elif hours == 3:
@@ -113,6 +113,8 @@ class GridData(object):
 		""" Parse and put NDB Forecasts. Return Keys."""
 
 		self._init_Forecasts()
+		if len(self.ndb_forecasts) != 168:
+			RecordError(error_message='Incomplete Forecast on ' + self.made_t.isoformat()).put()
 		self._crawl_forecast()
 		return ndb.put_multi(self.ndb_forecasts.values())
 		
@@ -158,6 +160,7 @@ class ObservationData(object):
 		""" Parse and put NDB Observations. Return keys."""
 
 		self._crawl_hourly_obs()
+
 		return ndb.put_multi(self.ndb_obs)
 
 # Utility functions for parsing NWS station observation data

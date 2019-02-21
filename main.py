@@ -84,7 +84,7 @@ def delete_forecasts():
 		forecast.key.delete()
 
 	return 'Deleted 168 forecasts.'
-	
+
 @app.route('/OAX/observations/record')
 @cron_only
 def record_observation():
@@ -98,8 +98,7 @@ def record_observation():
 		obs_data = ObservationData(resp.json()['features'])
 		resp = jsonify(map(lambda key: key.id(), obs_data.to_ndb()))
 	if len(obs_data.ndb_obs) == 0:
-		no_obs = RecordError(error_message='Observation record fail: no new observations found.')
-		no_obs.put()
+		RecordError(error_message='Observation record fail: no new observations found.').put()
 		resp.status_code = 500
 	return resp
 
@@ -114,6 +113,7 @@ def record_rawforecast():
 	return jsonify(r.json()), r.status_code
 
 @app.route('/OAX/rawForecasts/convert/<date_made>')
+@cron_only
 def conv_rawforecasts(date_made):
 	raw_forecast = RawForecast.query(RawForecast.date == date_made).get()
 	grid_data = GridData(raw_forecast.forecast['properties'])
