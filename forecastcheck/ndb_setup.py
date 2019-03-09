@@ -1,5 +1,5 @@
 """ Setup ndb models."""
-__all__ = ['RawForecast', 'Weather', 'Observation', 'Forecast', 'RecordError']
+__all__ = ['RawForecast', 'RawObservation', 'Weather', 'Observation', 'Forecast', 'RecordError']
 
 from google.appengine.ext import ndb
 
@@ -20,6 +20,11 @@ class RawForecast(ndb.Model):
     """Model to hold raw forecast JSON."""
     date = ndb.StringProperty() # Date forecast was made
     forecast = ndb.JsonProperty()
+
+class RawObservation(ndb.Model):
+    """Model to hold raw forecast JSON."""
+    date = ndb.StringProperty() # Date forecast was made
+    observation = ndb.JsonProperty()
 
 class Weather(ndb.Model):
     """Model to hold various weather properties.

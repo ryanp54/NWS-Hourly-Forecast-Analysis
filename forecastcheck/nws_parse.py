@@ -9,7 +9,7 @@ from datetime import datetime, timedelta
 
 from google.appengine.ext import ndb
 
-from forecastcheck.ndb_setup import RawForecast, Weather, Observation, Forecast, RecordError
+from forecastcheck.ndb_setup import RawObservation, Weather, Observation, Forecast, RecordError
 
 class GridData(object):
 	"""Parse forecast data into hourly NDB Forecast entities.
@@ -155,6 +155,11 @@ class ObservationData(object):
 			if hour and hour > self.last_ndb_t:
 				ob['properties']['time'] = hour
 				self.ndb_obs.append(_to_Observation(ob['properties']))
+
+	def put_raw(self):
+		raw = RawObservation(date=datetime.today().isoformat()[0:10], observation=self.data)
+		raw.put()
+		return
 
 	def to_ndb(self):
 		""" Parse and put NDB Observations. Return keys."""

@@ -4,7 +4,7 @@ import pdb
 from functools import wraps
 from datetime import date, datetime, timedelta
 
-from forecastcheck.ndb_setup import RawForecast, Weather, Observation, Forecast, RecordError
+from forecastcheck.ndb_setup import RawForecast, RawObservation, Weather, Observation, Forecast, RecordError
 from forecastcheck.nws_parse import	GridData, ObservationData
 
 from requests import get
@@ -88,14 +88,14 @@ def delete_forecasts():
 @app.route('/OAX/observations/record')
 @cron_only
 def record_observation():
-	last_ob_t = ObservationData.last_ndb_time()
 	resp = get(
 		'https://api.weather.gov/stations/' + station_code + '/observations?end='
 		+ days_ago(1).isoformat().split('.')[0] + 'Z&start='
-		+ last_ob_t.isoformat().split('.')[0] + 'Z',
+		+ days_ago(4).isoformat().split('.')[0] + 'Z',
 		headers=headers)
 	if resp.status_code >= 200 and resp.status_code < 300:
 		obs_data = ObservationData(resp.json()['features'])
+		obs_data.put_raw()
 		resp = jsonify(map(lambda key: key.id(), obs_data.to_ndb()))
 	if len(obs_data.ndb_obs) == 0:
 		RecordError(error_message='Observation record fail: no new observations found.').put()
@@ -129,5 +129,14 @@ def get_rawforecasts(date_made=None):
 	else:
 		forecast = RawForecast.query().order(-RawForecast.date).get()
 	return jsonify(forecast={'date': forecast.date, 'forecast': forecast.forecast})
+
+@app.route('/OAX/rawObservations/')
+@app.route('/OAX/rawObservations/<date_made>')
+def get_rawobservations(date_made=None):
+	if date_made:
+		observation = RawObservation.query(RawObservation.date == date_made).get()
+	else:
+		observation = RawObservation.query().order(-RawObservation.date).get()
+	return jsonify(observation={'date': observation.date, 'observation': observation.observation})
 
 def days_ago(days): return datetime.utcnow() - timedelta(days=days)
