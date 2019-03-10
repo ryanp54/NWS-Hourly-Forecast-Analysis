@@ -6,6 +6,7 @@ from datetime import date, datetime, timedelta
 
 from forecastcheck.ndb_setup import RawForecast, RawObservation, Weather, Observation, Forecast, RecordError
 from forecastcheck.nws_parse import	GridData, ObservationData
+from forecastcheck.acurater import ave_fcast_error
 
 from requests import get
 from google.appengine.ext import ndb

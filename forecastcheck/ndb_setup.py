@@ -13,7 +13,9 @@ class _ConvIntegerProperty(ndb.IntegerProperty):
         if abs(coerced_value - value) < 0.001:
             return coerced_value
         else:
-            RecordError(error_message='Invalid int received for ConvInteger: ' + str(value))
+            RecordError(
+                error_message='Invalid int received for ConvInteger: ' + str(value)
+            ).put()
             return None
 
 class RawForecast(ndb.Model):

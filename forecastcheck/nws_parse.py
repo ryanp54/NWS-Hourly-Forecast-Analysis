@@ -14,7 +14,6 @@ from forecastcheck.ndb_setup import RawObservation, Weather, Observation, Foreca
 class GridData(object):
 	"""Parse forecast data into hourly NDB Forecast entities.
 
-	
 	Takes the value of the 'properties' property from the NWS 
 	gridpoints forecast endpoint to instantiate. The to_ndb method 
 	can then be called to parse and put the data to NDB entities. 
@@ -46,7 +45,7 @@ class GridData(object):
 		self.made_t = made_t
 		# Round start_d forward to noon or midnight
 		self.start_d = datetime(made_t.year, made_t.month, made_t.day, 12)
-		self.start_d += timedelta(days=0.5*round(made_t.hours/24.0))
+		self.start_d += timedelta(days=0.5*round(made_t.hour/24.0))
 		self.end_t = self.start_d + timedelta(days=7)
 		if self.end_t > data_end:
 			self.end_t = data_end
