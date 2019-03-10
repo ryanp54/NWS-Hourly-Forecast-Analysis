@@ -139,20 +139,16 @@ class ObservationData(object):
 		last_ob = Observation.query().order(-Observation.time).get()
 		return _iso2datetime(last_ob.time) if last_ob else datetime(1,1,1)
 
-	def __init__(self, observation_data, last_ndb_time=None):
-		if last_ndb_time is None:
-			last_ndb_time = self.last_ndb_time()
-		
-		self.last_ndb_t = last_ndb_time
+	def __init__(self, observation_data):
 		self.data = observation_data
 
 	def _crawl_hourly_obs(self):
 		self.ndb_obs = []
 		for ob in self.data:
-			# Skip ceating Observation if the time is not close
+			# Skip creating Observation if the time is not close
 			# to the top of the hour
 			hour = _filter2hourly(ob)
-			if hour and hour > self.last_ndb_t:
+			if hour and need_obs(hour):
 				ob['properties']['time'] = hour
 				self.ndb_obs.append(_to_Observation(ob['properties']))
 
@@ -215,6 +211,10 @@ def _filter2hourly(ob):
 	else:
 		time = False
 	return time
+
+def need_obs(hour):
+	ob = Observation.get_by_id(hour.isoformat())
+	return ob == None
 
 # Utility function for parsing NWS grid forecast data
 
