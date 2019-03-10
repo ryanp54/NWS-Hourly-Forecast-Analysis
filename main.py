@@ -5,7 +5,7 @@ from functools import wraps
 from datetime import date, datetime, timedelta
 
 from forecastcheck.ndb_setup import RawForecast, RawObservation, Weather, Observation, Forecast, RecordError
-from forecastcheck.nws_parse import	GridData, ObservationData
+from forecastcheck.nws_parse import	GridData, ObservationData, _iso2datetime
 from forecastcheck.acurater import ave_fcast_error
 
 from requests import get
@@ -59,6 +59,11 @@ def record_forecast():
 	elif resp.status_code >= 200 and resp.status_code < 300:
 		resp = jsonify(map(lambda key: key.id(), grid_data.to_ndb()))
 	return resp
+
+@app.route('/OAX/forecasts/analyze/<isotime>')
+def analyze_fcasts(isotime):
+		time = _iso2datetime(isotime)
+		return str(ave_fcast_error(time, time))
 
 @app.route('/OAX/forecasts/')
 def get_forecasts():

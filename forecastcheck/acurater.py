@@ -45,7 +45,7 @@ class AveDiff(object):
 			
  
 
-def ave_fcast_error(start_t=datetime(1,1,1), end_t=datetime(9999,12,31), valid_lead_ds=range(1,8)):
+def ave_fcast_error(start_t, end_t=datetime(9999,12,31), valid_lead_ds=range(1,8)):
 	obs = Observation.query(
 		Observation.time >= start_t.isoformat(),
 		Observation.time <= end_t.isoformat()
@@ -62,3 +62,5 @@ def ave_fcast_error(start_t=datetime(1,1,1), end_t=datetime(9999,12,31), valid_l
 				ob_val = getattr(ob.observed_weather, prop)
 				fcast_val = getattr(forecast.predicted_weather, prop)
 				ave_diffs[forecast.lead_days][prop] += abs(ob_val - fcast_val)
+
+	return ave_diffs
