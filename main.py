@@ -6,7 +6,7 @@ from datetime import date, datetime, timedelta
 
 from forecastcheck.ndb_setup import RawForecast, RawObservation, Weather, Observation, Forecast, RecordError
 from forecastcheck.nws_parse import	GridData, ObservationData, _iso2datetime
-from forecastcheck.acurater import ave_fcast_error
+from forecastcheck.acurater import FcastAnalysis
 
 from requests import get
 from google.appengine.ext import ndb
@@ -60,10 +60,11 @@ def record_forecast():
 		resp = jsonify(map(lambda key: key.id(), grid_data.to_ndb()))
 	return resp
 
-@app.route('/OAX/forecasts/analyze/<isotime>')
-def analyze_fcasts(isotime):
-		time = _iso2datetime(isotime)
-		return str(ave_fcast_error(time, time))
+@app.route('/OAX/forecasts/analyze')
+def analyze_fcasts():
+		start = request.args['start']
+		end = request.args['end']
+		return str(FcastAnalysis(start, end).errors)
 
 @app.route('/OAX/forecasts/')
 def get_forecasts():

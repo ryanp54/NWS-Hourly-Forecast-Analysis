@@ -58,8 +58,8 @@ class Observation(ndb.Model):
     """Model to hold weather observation.
 
     nws_parse expects entities to be created with id=time.
-    time attribute is included for complex queries not supported by
-    keys by default.
+    time attribute is included to avoid having to create custom
+    indexes for the ids/keys.
     """
     time = ndb.StringProperty('t')
     observed_weather = ndb.StructuredProperty(Weather, 'ow')
