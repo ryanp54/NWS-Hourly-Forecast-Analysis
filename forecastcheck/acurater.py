@@ -26,7 +26,7 @@ class AveError(object):
 			error = addend.error if isinstance(addend, AveError) else addend
 			total_abs_error = self.error*self.n + abs(error)
 			total_n = self.n + add_n
-			return self if total_n is 0 else AveError(total_abs_error/total_n, total_n)
+			return self if total_n == 0 else AveError(total_abs_error/total_n, total_n)
 		else:
 			return self
 
@@ -38,7 +38,7 @@ class AveError(object):
 			if total_abs_error < 0:
 				raise ValueError('AveError subtraction resulted in a negative total error.')
 	 		total_n = self.n - sub_n
-			return self if total_n is 0 else AveError(total_abs_error/total_n, total_n)
+			return self if total_n == 0 else AveError(total_abs_error/total_n, total_n)
 		else:
 			return self
 
@@ -60,7 +60,7 @@ class Bias(object):
 			bias = addend.bias if isinstance(addend, Bias) else addend
 			total_bias = self.bias*self.n + bias
 			total_n = self.n + add_n
-			return self if total_n is 0 else Bias(total_bias/total_n, total_n)
+			return self if total_n == 0 else Bias(total_bias/total_n, total_n)
 		else:
 			return self
 
@@ -70,35 +70,81 @@ class Bias(object):
 			bias = subtrahend.bias if isinstance(subtrahend, Bias) else subtrahend
 			total_bias = self.bias*self.n - bias
 	 		total_n = self.n - sub_n
-			return self if total_n is 0 else Bias(total_bias/total_n, total_n)
+			return self if total_n == 0 else Bias(total_bias/total_n, total_n)
+		else:
+			return self
+
+class Accuracy(object):
+	"""TODO: docstring for Accuracy"""
+	def __init__(self, correct_range=1, accuracy=0.0, n=0):
+		self.correct_range = correct_range
+		self.accuracy = accuracy
+		self.n = n
+
+	def __str__(self):
+		return str(self.accuracy)
+
+	def __repr__(self):
+		return 'Accuracy(accuracy: {0.accuracy}, n: {0.n})'.format(self) 
+	
+	def __add__(self, addend):
+		if isinstance(addend, Accuracy):
+			n = self.n + addend.n
+			accuracy = (self.accuracy + addend.accuracy)/n
+			return Accuracy(self.correct_range, accuracy, n)
+		elif addend is not None:
+			n = self.n + 1
+			if abs(addend) < self.correct_range:
+				accuracy = (self.accuracy*self.n + 1)/n
+			else:
+				accuracy = self.accuracy*self.n/n
+			return Accuracy(self.correct_range, accuracy, n)
+		else:
+			return self
+
+	def __sub__(self, subtrahend):
+		if isinstance(subtrahend, Accuracy):
+			n = self.n + subtrahend.n
+			accuracy = (self.accuracy + subtrahend.accuracy)/n
+			return Accuracy(self.correct_range, accuracy, n)
+		elif subtrahend is not None:
+			n = self.n - 1
+			if abs(subtrahend) < self.correct_range:
+				accuracy = (self.accuracy*self.n - 1)/n
+			else:
+				accuracy = self.accuracy*self.n/n
+			return Accuracy(self.correct_range, accuracy, n)
 		else:
 			return self
 
 class SimpleError(object):
 	"""TODO: docstring for SimpleError"""
-	def __init__(self, ave_error=None, bias=None):
+	def __init__(self, ave_error=None, bias=None, accuracy=None, accuracy_range=1.0):
 		self.ave_error = ave_error or AveError()
 		self.bias = bias or Bias()
+		self.accuracy = accuracy or Accuracy(accuracy_range)
 
 	def __str__(self):
-		return '{{error: {0.ave_error!s}, bias: {0.bias!s}}}'.format(self)
+		return '{{error: {0.ave_error!s}, bias: {0.bias!s}, accuracy: {0.accuracy!r}}}'.format(self)
 
 	def __repr__(self):
-		return 'SimpleError({0.ave_error!r}, {0.bias!r})'.format(self)
+		return 'SimpleError({0.ave_error!r}, {0.bias!r}, {0.accuracy!r})'.format(self)
 
 	def __add__(self, addend):
-		return SimpleError(self.ave_error + addend, self.bias + addend)
+		return SimpleError(
+			self.ave_error + addend, self.bias + addend, self.accuracy + addend)
 
 	def __sub__(self, subtrahend):
-		return SimpleError(self.ave_error - subtrahend, self.bias - subtrahend)
+		return SimpleError(
+			self.ave_error - subtrahend, self.bias - subtrahend, self.accuracy - subtrahend)
 
 class BinCount(object):
 	"""TODO: Docstring for BinCount"""
-	def __init__(self, bins=None):
+	def __init__(self, bins=None, predicted_n=0.0):
 		self.bins = bins if bins else {
 			0: 0,
-			10: 0,			
-			20: 0,			
+			10: 0,
+			20: 0,
 			30: 0,
 			40: 0,
 			50: 0,
@@ -108,27 +154,40 @@ class BinCount(object):
 			80: 0,
 			100: 0
 		}
-		self.n = sum(self.bins.values())
+		self._ob_n = sum(self.bins.values())
+		self._predicted_n = predicted_n
 
 	def __str__(self):
 		return str(self.bins)
 
 	def __repr__(self):
-		return 'BinCount(bins: {})'.format([(k, v) for k, v in sorted(self.bins.items())])
+		return 'BinCount(bins: {}, bias:{})'.format(
+			[(k, v) for k, v in sorted(self.bins.items())], self.bias())
 
-	def add(self, value):
+	def reg_ob(self, value):
+		self.reg_predicted(value)
 		for bin_ in sorted(self.bins):
 			if value <= bin_:
 				self.bins[bin_] += 1
-				self.n += 1
-				return
+				self._ob_n += 1
+				break
 
-	def remove(self, value):
+	def rem_ob(self, value):
+		self.rem_predicted(value)
 		for bin_ in sorted(bins):
 			if value <= bin_:
 				self.bins[bin_] -= 1
-				self.n -= 1
-				return
+				self._ob_n -= 1
+				break
+
+	def reg_predicted(self, value):
+		self._predicted_n += value/100.0
+
+	def rem_predicted(self, value):
+		self._predicted_n -= value/100.0
+
+	def bias(self):
+		return self._predicted_n/self._ob_n if self._ob_n != 0 else 0
 
 class FcastAnalysis(object):
 	"""TODO: docstring"""
@@ -145,18 +204,19 @@ class FcastAnalysis(object):
 		self._analyze()
 
 	def _init_errors(self):
-		wx_simple_errors = (
-			'temperature',
-			'dewpoint',
-			'precip_6hr',
-			'wind_dir',
-			'wind_speed'
-		)
+		wx_simple_errors = {
+			'temperature': {'accuracy_range': 1.67},
+			'dewpoint': {'accuracy_range': 1.67},
+			'precip_6hr': {'accuracy_range': 2},
+			'cloud_cover': {'accuracy_range': 1},
+			'wind_dir': {'accuracy_range': 45},
+			'wind_speed': {'accuracy_range': 1.34}
+		}
 		self.errors = {}
 		for day in self.valid_lead_ds:
 			self.errors[day] = {}
-			for prop in wx_simple_errors:
-				self.errors[day][prop] = SimpleError()
+			for prop, kwargs in wx_simple_errors.items():
+				self.errors[day][prop] = SimpleError(**kwargs)
 			self.errors[day]['precip_chance'] = BinCount()
 
 	def _analyze(self):
@@ -171,12 +231,13 @@ class FcastAnalysis(object):
 		wx_error_fns = {
 			'temperature': lambda ob, fcast: fcast - ob,
 			'dewpoint': lambda ob, fcast: fcast - ob,
-			'precip_6hr': lambda ob, fcast: fcast - ob if fcast + ob > 0 else None
+			'precip_6hr': lambda ob, fcast: fcast - ob if fcast + ob > 0 else None,
+			'cloud_cover': self._get_cloud_cover_error
 		}
 		for prop, func in wx_error_fns.items():
 			ob_val = getattr(ob.observed_weather, prop)
 			fcast_val = getattr(fcast.predicted_weather, prop)
-			if fcast_val is not None:
+			if fcast_val is not None and ob_val is not None:
 				self.errors[fcast.lead_days][prop] += func(ob_val, fcast_val)
 	
 	def _get_wind_errors(self, ob, fcast):
@@ -196,8 +257,40 @@ class FcastAnalysis(object):
 			error_speed = 0.0 if fcast_speed < 1.6 else error_speed - 1.5
 		self.errors[fcast.lead_days]['wind_speed'] += error_speed
 
+	def _get_cloud_cover_error(self, ob, fcast):
+		cc_categories = {
+			'CLR': {'val': 0, 'okta': {'min': 0, 'max': 2.5}},
+			'SCT': {'val': 1, 'okta': {'min': 0.75, 'max': 5}},
+			'BKN': {'val': 2, 'okta': {'min': 3.5, 'max': 7.5}},
+			'OVC': {'val': 3, 'okta': {'min': 6.5, 'max': 8}},
+		}
+		ob_layers = [cc_categories[layer] for layer in ob.split(', ')]
+		ob_max = max(ob_layers, key=lambda cc: cc['val'])
+		fcast_okta = fcast/12.5
+		# Assign the forecasted category in a way that minimizes the
+		# error amount to avoid over punishing edge cases
+		if fcast_okta < ob_max['okta']['min']:
+			for category in sorted(cc_categories.values(), key=lambda cat: -cat['val']):
+				if fcast_okta >= category['okta']['min']:
+					error = category['val'] - ob_max['val']
+					break
+		elif fcast_okta > ob_max['okta']['max']:
+			for category in sorted(cc_categories.values(), key=lambda cat: cat['val']):
+				if fcast_okta <= category['okta']['max']:
+					error = category['val'] - ob_max['val']
+					break
+		else:
+			error = 0
+		return error
+
 	def _analyze_precip_chance(self, ob, fcast):
-		precip_terms = ['drizzle', 'rain', 'sleet', 'snow', 'thunderstorm']
+		precip_terms = ['drizzle', 'rain', 'sleet', 'snow', 'thunderstorm', 'unknown']
 		precip_chance = fcast.predicted_weather.precip_chance
-		if (any([ob.observed_weather.all_weather == term for term in precip_terms])):
-			self.errors[fcast.lead_days]['precip_chance'].add(precip_chance)
+		wx_obs = ob.observed_weather.all_weather
+		if wx_obs is not None:
+			wx_obs = wx_obs.split(', ')
+			precip_obs = [any([wx_ob == term for term in precip_terms]) for wx_ob in wx_obs]
+			if any(precip_obs):
+				self.errors[fcast.lead_days]['precip_chance'].reg_ob(precip_chance)
+			else:
+				self.errors[fcast.lead_days]['precip_chance'].reg_predicted(precip_chance)
