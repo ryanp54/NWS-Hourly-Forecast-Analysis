@@ -242,20 +242,21 @@ class FcastAnalysis(object):
 	
 	def _get_wind_errors(self, ob, fcast):
 		ob_speed = ob.observed_weather.wind_speed
-		ob_dir = ob.observed_weather.wind_dir
-		fcast_speed = fcast.predicted_weather.wind_speed
-		fcast_dir = fcast.predicted_weather.wind_dir
-		error_speed = fcast_speed - ob_speed
-		if ob_speed > 0:
-			# wind_dir observation is only valid if wind_speed > 0
-			error_dir = fcast_dir - ob_dir
-			if abs(error_dir) > 180:
-				error_dir = error_dir - math.copysign(360, error_dir)
-			self.errors[fcast.lead_days]['wind_dir'] += error_dir
-		else:
-			# Adjust for non-observation of low speed winds
-			error_speed = 0.0 if fcast_speed < 1.6 else error_speed - 1.5
-		self.errors[fcast.lead_days]['wind_speed'] += error_speed
+		if ob_speed is not None:
+			ob_dir = ob.observed_weather.wind_dir
+			fcast_speed = fcast.predicted_weather.wind_speed
+			fcast_dir = fcast.predicted_weather.wind_dir
+			error_speed = fcast_speed - ob_speed
+			if ob_speed > 0:
+				# wind_dir observation is only valid if wind_speed > 0
+				error_dir = fcast_dir - ob_dir
+				if abs(error_dir) > 180:
+					error_dir = error_dir - math.copysign(360, error_dir)
+				self.errors[fcast.lead_days]['wind_dir'] += error_dir
+			else:
+				# Adjust for non-observation of low speed winds
+				error_speed = 0.0 if fcast_speed < 1.6 else error_speed - 1.5
+			self.errors[fcast.lead_days]['wind_speed'] += error_speed
 
 	def _get_cloud_cover_error(self, ob, fcast):
 		cc_categories = {
