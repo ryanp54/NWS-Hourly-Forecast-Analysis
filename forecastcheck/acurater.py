@@ -207,7 +207,7 @@ class FcastAnalysis(object):
 		wx_simple_errors = {
 			'temperature': {'accuracy_range': 1.67},
 			'dewpoint': {'accuracy_range': 1.67},
-			'precip_6hr': {'accuracy_range': 2},
+			'precip_6hr': {'accuracy_range': 1.3},
 			'cloud_cover': {'accuracy_range': 1},
 			'wind_dir': {'accuracy_range': 45},
 			'wind_speed': {'accuracy_range': 1.34}
@@ -231,7 +231,7 @@ class FcastAnalysis(object):
 		wx_error_fns = {
 			'temperature': lambda ob, fcast: fcast - ob,
 			'dewpoint': lambda ob, fcast: fcast - ob,
-			'precip_6hr': lambda ob, fcast: fcast - ob if fcast + ob > 0 else None,
+			'precip_6hr': lambda ob, fcast: fcast - (ob*1000) if fcast + ob > 0 else None,
 			'cloud_cover': self._get_cloud_cover_error
 		}
 		for prop, func in wx_error_fns.items():
