@@ -207,7 +207,7 @@ class FcastAnalysis(object):
 		wx_simple_errors = {
 			'temperature': {'accuracy_range': 1.67},
 			'dewpoint': {'accuracy_range': 1.67},
-			'precip_6hr': {'accuracy_range': 1.3},
+			'precip_6hr': {'accuracy_range': 2.54},
 			'cloud_cover': {'accuracy_range': 1},
 			'wind_dir': {'accuracy_range': 45},
 			'wind_speed': {'accuracy_range': 1.34}
