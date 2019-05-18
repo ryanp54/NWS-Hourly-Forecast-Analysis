@@ -260,25 +260,29 @@ class FcastAnalysis(object):
 
 	def _get_cloud_cover_error(self, ob, fcast):
 		cc_categories = {
+			'VV': {'val': -1, 'okta': {'min': 0.75, 'max': 8}},
 			'CLR': {'val': 0, 'okta': {'min': 0, 'max': 2.5}},
 			'SCT': {'val': 1, 'okta': {'min': 0.75, 'max': 5}},
 			'BKN': {'val': 2, 'okta': {'min': 3.5, 'max': 7.5}},
 			'OVC': {'val': 3, 'okta': {'min': 6.5, 'max': 8}},
 		}
 		ob_layers = [cc_categories[layer] for layer in ob.split(', ')]
-		ob_max = max(ob_layers, key=lambda cc: cc['val'])
+		layers_max = max(ob_layers, key=lambda cc: cc['val'])
 		fcast_okta = fcast/12.5
+		# Handle special 'VV' case.
+		if layers_max == -1:
+			return 0 if fcast_okta >= 0.75 else 1
 		# Assign the forecasted category in a way that minimizes the
 		# error amount to avoid over punishing edge cases
-		if fcast_okta < ob_max['okta']['min']:
+		if fcast_okta < layers_max['okta']['min']:
 			for category in sorted(cc_categories.values(), key=lambda cat: -cat['val']):
 				if fcast_okta >= category['okta']['min']:
-					error = category['val'] - ob_max['val']
+					error = category['val'] - layers_max['val']
 					break
-		elif fcast_okta > ob_max['okta']['max']:
+		elif fcast_okta > layers_max['okta']['max']:
 			for category in sorted(cc_categories.values(), key=lambda cat: cat['val']):
 				if fcast_okta <= category['okta']['max']:
-					error = category['val'] - ob_max['val']
+					error = category['val'] - layers_max['val']
 					break
 		else:
 			error = 0
