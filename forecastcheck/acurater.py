@@ -192,9 +192,9 @@ class BinCount(object):
 class FcastAnalysis(object):
 	"""TODO: docstring"""
 
-	def __init__(self, start_t, end_t='9999-12-31T23:00:00', valid_lead_ds=range(1,8)):
-		self.start_t = start_t
-		self.end_t = end_t
+	def __init__(self, start_t, end_t='9999-12-31', valid_lead_ds=range(1,8)):
+		self.start_t = start_t + 'T00:00:00'
+		self.end_t = end_t + 'T23:00:00'
 		self.valid_lead_ds = valid_lead_ds
 		self.obs = Observation.query(
 			Observation.time >= start_t,

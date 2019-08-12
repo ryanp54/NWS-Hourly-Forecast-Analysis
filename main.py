@@ -18,9 +18,9 @@ appengine.monkeypatch()
 app = Flask(__name__)
 app.config['JSONIFY_PRETTYPRINT_REGULAR'] = True
 
-grid_point = 'OAX/76,56'
-station_code = 'KMLE'
-headers = {'user-agent': 'site:weather2019.appspot.com; contact-email:ryanp54@yahoo.com'}
+nws_gridpoint = 'OAX/76,56'
+nws_station = 'KMLE'
+nws_headers = {'user-agent': 'site:weather2019.appspot.com; contact-email:ryanp54@yahoo.com'}
 
 def cron_only(f):
 	@wraps(f)
@@ -33,11 +33,19 @@ def cron_only(f):
 		return f(*args, **kwargs)
 	return restricted2cron
 
+def allow_local_cors(f):
+	@wraps(f)
+	def local_cors_fix(*args, **kwargs):
+		resp = f(*args, **kwargs)
+		if (request.headers.get('Host') == 'localhost:8080'):
+			resp.headers['Access-Control-Allow-Origin'] = '*'
+		return resp
+	return local_cors_fix
 
 @app.route('/')
 @app.route('/index')
 def welcome():
-	return send_from_directory('static', 'index.html')
+	return send_from_directory('app/build', 'index.html')
 
 @app.route('/test')
 def test():
@@ -50,7 +58,7 @@ def test():
 @app.route('/OAX/forecasts/record')
 @cron_only
 def record_forecast():
-	resp = get('https://api.weather.gov/gridpoints/' + grid_point, headers=headers)
+	resp = get('https://api.weather.gov/gridpoints/' + nws_gridpoint, headers=nws_headers)
 	grid_data = GridData(resp.json()['properties'])
 	if grid_data.made_t < days_ago(1):
 		stale = RecordError(error_message='Forecast record fail: forecast was not current.')
@@ -61,12 +69,14 @@ def record_forecast():
 	return resp
 
 @app.route('/OAX/forecasts/analyze')
+@allow_local_cors
 def analyze_fcasts():
 		start = request.args['start']
 		end = request.args['end']
-		return str(FcastAnalysis(start, end).errors)
+		return make_response(str(FcastAnalysis(start, end).errors))
 
 @app.route('/OAX/forecasts/')
+@allow_local_cors
 def get_forecasts():
 	query = Forecast.query()
 	for param, val in request.args.items():
@@ -80,8 +90,7 @@ def get_forecasts():
 			query = query.filter(prop == val)
 
 	resp = map(lambda result: result.to_dict(), query.fetch(168))
-
-	return jsonify(sorted(resp, key=lambda x: [x['valid_time'], x['lead_days']]))
+ 	return jsonify(sorted(resp, key=lambda x: [x['valid_time'], x['lead_days']]))
 
 @app.route('/OAX/forecasts/delete')
 @cron_only
@@ -96,10 +105,10 @@ def delete_forecasts():
 @cron_only
 def record_observation():
 	resp = get(
-		'https://api.weather.gov/stations/' + station_code + '/observations?end='
+		'https://api.weather.gov/stations/' + nws_station + '/observations?end='
 		+ days_ago(1).isoformat().split('.')[0] + 'Z&start='
 		+ days_ago(4).isoformat().split('.')[0] + 'Z',
-		headers=headers)
+		headers=nws_headers)
 	if resp.status_code >= 200 and resp.status_code < 300:
 		obs_data = ObservationData(resp.json()['features'])
 		obs_data.put_raw()
@@ -112,7 +121,7 @@ def record_observation():
 @app.route('/OAX/rawForecasts/record')
 @cron_only
 def record_rawforecast():
-	r = get('https://api.weather.gov/gridpoints/' + grid_point, headers=headers)
+	r = get('https://api.weather.gov/gridpoints/' + nws_gridpoint, headers=nws_headers)
 	new_forecast = RawForecast(date=date.today().isoformat(), forecast=r.json())
 	if r.status_code >= 200 and r.status_code < 300:
 		new_forecast.put()
@@ -124,9 +133,7 @@ def record_rawforecast():
 def conv_rawforecasts(date_made):
 	raw_forecast = RawForecast.query(RawForecast.date == date_made).get()
 	grid_data = GridData(raw_forecast.forecast['properties'])
-	resp = jsonify(map(lambda key: key.id(), grid_data.to_ndb()))
-
-	return resp
+	return jsonify(map(lambda key: key.id(), grid_data.to_ndb()))
 
 @app.route('/OAX/rawForecasts/')
 @app.route('/OAX/rawForecasts/<date_made>')
