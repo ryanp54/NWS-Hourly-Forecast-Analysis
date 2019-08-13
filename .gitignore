@@ -1,6 +1,6 @@
 *.pyc
 app.yaml
-
+app/node_modules/
 
 # Cache files for Sublime Text
 *.tmlanguage.cache
