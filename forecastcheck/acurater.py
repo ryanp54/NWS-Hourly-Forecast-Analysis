@@ -18,7 +18,7 @@ class AveError(object):
 		return str(self.error)
 
 	def __repr__(self):
-		return 'AveError(error: {0.error}, n: {0.n})'.format(self) 
+		return '{0.__dict__}'.format(self) 
 
 	def __add__(self, addend):
 		if addend is not None:
@@ -52,7 +52,7 @@ class Bias(object):
 		return str(self.bias)
 
 	def __repr__(self):
-		return 'Bias(bias: {0.bias}, n: {0.n})'.format(self) 
+		return '{0.__dict__}'.format(self) 
 
 	def __add__(self, addend):
 		if addend is not None:
@@ -85,7 +85,7 @@ class Accuracy(object):
 		return str(self.accuracy)
 
 	def __repr__(self):
-		return 'Accuracy(accuracy: {0.accuracy}, n: {0.n})'.format(self) 
+		return '{0.__dict__}'.format(self) 
 	
 	def __add__(self, addend):
 		if isinstance(addend, Accuracy):
@@ -128,7 +128,7 @@ class SimpleError(object):
 		return '{{error: {0.ave_error!s}, bias: {0.bias!s}, accuracy: {0.accuracy!r}}}'.format(self)
 
 	def __repr__(self):
-		return 'SimpleError({0.ave_error!r}, {0.bias!r}, {0.accuracy!r})'.format(self)
+		return '{0.__dict__}'.format(self)
 
 	def __add__(self, addend):
 		return SimpleError(
@@ -161,8 +161,8 @@ class BinCount(object):
 		return str(self.bins)
 
 	def __repr__(self):
-		return 'BinCount(bins: {}, bias:{})'.format(
-			[(k, v) for k, v in sorted(self.bins.items())], self.bias())
+		return "{{'bin_count': {{'bins': {}, 'bias':{}}}}}".format(
+			[{'{}'.format(k): v} for k, v in sorted(self.bins.items())], self.bias())
 
 	def reg_ob(self, value):
 		self.reg_predicted(value)
@@ -201,6 +201,7 @@ class FcastAnalysis(object):
 			Observation.time <= end_t
 		).fetch()
 		self._init_errors()
+		self.data = {'obs': [], 'fcasts': {}, 'errors': self.errors}
 		self._analyze()
 
 	def _init_errors(self):
