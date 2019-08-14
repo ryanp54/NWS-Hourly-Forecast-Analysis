@@ -74,7 +74,8 @@ def analyze_fcasts():
 		start = request.args['start']
 		end = request.args['end']
 		fcast = FcastAnalysis(start, end)
-		return jsonify(str(fcast.errors))
+		pdb.set_trace()
+		return jsonify(str(fcast.data))
 
 @app.route('/OAX/forecasts/')
 @allow_local_cors

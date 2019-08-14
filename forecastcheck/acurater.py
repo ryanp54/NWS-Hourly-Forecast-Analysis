@@ -161,8 +161,8 @@ class BinCount(object):
 		return str(self.bins)
 
 	def __repr__(self):
-		return "{{'bin_count': {{'bins': {}, 'bias':{}}}}}".format(
-			[{'{}'.format(k): v} for k, v in sorted(self.bins.items())], self.bias())
+		return "{{'bin_count': {{'bins': {0}, 'bias': {1}}}}}".format(
+			{'{}'.format(k): v for k, v in sorted(self.bins.items())}, self.bias())
 
 	def reg_ob(self, value):
 		self.reg_predicted(value)
@@ -201,7 +201,7 @@ class FcastAnalysis(object):
 			Observation.time <= end_t
 		).fetch()
 		self._init_errors()
-		self.data = {'obs': [], 'fcasts': {}, 'errors': self.errors}
+		self.data = {'obs': [], 'fcasts': {'{}'.format(i): [] for i in range(1,8)}, 'errors': self.errors}
 		self._analyze()
 
 	def _init_errors(self):
@@ -224,6 +224,8 @@ class FcastAnalysis(object):
 		for ob in self.obs:
 			self.fcasts = Forecast.query(Forecast.valid_time == ob.time).fetch()
 			for fcast in self.fcasts:
+				self.data['obs'].append(ob.to_dict())
+				self.data['fcasts'][str(fcast.lead_days)].append(fcast.to_dict())
 				self._get_simple_errors(ob, fcast)
 				self._get_wind_errors(ob, fcast)
 				self._analyze_precip_chance(ob, fcast)
