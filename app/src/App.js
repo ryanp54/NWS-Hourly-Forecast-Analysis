@@ -56,12 +56,16 @@ function ForecastDayPicker(props) {
 }
 
 function DateRangeForm({onFetch}) {
-  let [start, setStart] = useState(getLastMonthStart());  
-  let [end, setEnd] = useState(getLastMonthEnd());
+  // let [start, setStart] = useState(getLastMonthStart());  
+  // let [end, setEnd] = useState(getLastMonthEnd());
+  let [start, setStart] = useState(new Date(2019,2,11));  
+  let [end, setEnd] = useState(new Date(2019,2,12));
 
   const fetchReturn = () => (
     onFetch(fetch(`${API_URL}start=${getISO(start)}&end=${getISO(end)}`))
   );
+
+  useEffect(fetchReturn, []);
 
   return (
     <Container>
@@ -88,29 +92,78 @@ function DateRangeForm({onFetch}) {
   );
 }
 
+function AnalysisChart({analysis, weather='temperature'}) {
+  const obsData = analysis.obs.map((ob) => ({
+    x: ob.time,
+    y: ob.observed_weather[weather],
+  }));
+  const getFcastData = (leadDays) => {
+    return analysis.fcasts[leadDays].map((fcast) => ({
+      x: fcast.valid_time,
+      y: fcast.predicted_weather[weather]
+    }));
+  };
+
+  const fcastLines = [];
+  for (const leadDays in analysis.fcasts) {
+    fcastLines.push(
+      <VictoryLine
+        data={getFcastData(leadDays)}
+        style={{
+          data: {
+            opacity: leadDays > 1 ? (8 - leadDays)/10 : 1.0,
+            stroke: 'red'
+          }
+        }}
+        key={leadDays}
+      />  
+    );
+  }
+  
+  return (
+    <VictoryChart scale={{x: "time"}} domainPadding={{y: 20}} >
+      
+      <VictoryAxis
+        tickCount={4}
+        tickFormat={(t) => {
+          const date = new Date(t);
+          return `${date.getMonth() + 1}/${date.getDate()} ${date.getHours()}:00`
+        }}
+        style={{ticks: {stroke: "black", size: 5}}}
+        offsetY={50}
+      />
+      <VictoryAxis dependentAxis crossAxis={false}/>
+
+      {fcastLines}
+      <VictoryLine data={obsData} />
+
+    </VictoryChart>    
+  );
+}
+
 function AnalysisPage() {
   let [analysis, setAnalysis] = useState(null);
-  let [loading, setLoading] = useState(false);
-  let resultsMessage = 'Select date range.';
-
-  if (loading) {
-    resultsMessage = 'Retrieving results...';
-  }
+  let [resultsMessage, setResultsMessage] = useState('Select date range.');
   
   return (
     <Container>
       <Row>
         <DateRangeForm
-          onFetch={(req) => {
-            setLoading(true);
-            req.then((resp) => resp.json())
+          onFetch={(request) => {
+            setResultsMessage('Retrieving results...');
+            setAnalysis(null);
+            request.then((resp) => resp.json())
             .then((json) => setAnalysis(json))
-            .catch((error) => resultsMessage = error);
+            .catch((error) => setResultsMessage(error.message));
           }}
         />
       </Row>
       <Row>
-        {analysis ? JSON.stringify(analysis) : ''}
+        {
+          analysis ?
+            <AnalysisChart analysis={analysis} weather='temperature' /> :
+            resultsMessage
+        }
       </Row>
     </Container>
   );
