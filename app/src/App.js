@@ -7,10 +7,10 @@ import { VictoryChart, VictoryAxis, VictoryLine } from 'victory';
 import DayPickerInput from 'react-day-picker/DayPickerInput';
 import 'react-day-picker/lib/style.css';
 
-import { getLastMonthStart, getLastMonthEnd, getDaysAgo, getISO } from './dateUtilities.js';
+import { getDaysAgo, getISO } from './dateUtilities.js';
 
 const API_URL = '_self' in React.createElement('div') ?
-  'http://localhost:8080/OAX/forecasts/analyze?' :
+  'https://weather2019.appspot.com/OAX/forecasts/analyze?' :
   '/OAX/forecasts/analyze?';
 
 function ForecastDayPicker(props) {
@@ -56,10 +56,8 @@ function ForecastDayPicker(props) {
 }
 
 function DateRangeForm({onFetch}) {
-  // let [start, setStart] = useState(getLastMonthStart());  
-  // let [end, setEnd] = useState(getLastMonthEnd());
-  let [start, setStart] = useState(new Date(2019,2,11));  
-  let [end, setEnd] = useState(new Date(2019,2,12));
+  let [start, setStart] = useState(getDaysAgo(10));  
+  let [end, setEnd] = useState(getDaysAgo(3));
 
   const fetchReturn = () => (
     onFetch(fetch(`${API_URL}start=${getISO(start)}&end=${getISO(end)}`))

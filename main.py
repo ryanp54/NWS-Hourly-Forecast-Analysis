@@ -42,12 +42,11 @@ def cron_only(f):
     return restricted2cron
 
 
-def allow_local_cors(f):
+def allow_cors(f):
     @wraps(f)
     def local_cors_fix(*args, **kwargs):
         resp = f(*args, **kwargs)
-        if (request.headers.get('Host') == 'localhost:8080'):
-            resp.headers['Access-Control-Allow-Origin'] = '*'
+        resp.headers['Access-Control-Allow-Origin'] = '*'
         return resp
     return local_cors_fix
 
@@ -85,7 +84,7 @@ def record_forecast():
 
 
 @app.route('/OAX/forecasts/analyze')
-@allow_local_cors
+@allow_cors
 def analyze_fcasts():
     start = request.args['start']
     end = request.args['end']
@@ -94,7 +93,7 @@ def analyze_fcasts():
 
 
 @app.route('/OAX/forecasts/')
-@allow_local_cors
+@allow_cors
 def get_forecasts():
     query = Forecast.query()
     for param, val in request.args.items():
