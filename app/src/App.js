@@ -1,13 +1,17 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Container, Row, Col, Button } from 'react-bootstrap';
 import './App.css';
+
+import { VictoryChart, VictoryAxis, VictoryLine } from 'victory';
 
 import DayPickerInput from 'react-day-picker/DayPickerInput';
 import 'react-day-picker/lib/style.css';
 
 import { getLastMonthStart, getLastMonthEnd, getDaysAgo, getISO } from './dateUtilities.js';
 
-const API_URL = '_self' in React.createElement('div') ? 'http://localhost:8080' : '';
+const API_URL = '_self' in React.createElement('div') ?
+  'http://localhost:8080/OAX/forecasts/analyze?' :
+  '/OAX/forecasts/analyze?';
 
 function ForecastDayPicker(props) {
   let [warned, setWarned] = useState(false);
@@ -51,9 +55,13 @@ function ForecastDayPicker(props) {
   );
 }
 
-function DateRangeForm({onUpdate}) {
+function DateRangeForm({onFetch}) {
   let [start, setStart] = useState(getLastMonthStart());  
   let [end, setEnd] = useState(getLastMonthEnd());
+
+  const fetchReturn = () => (
+    onFetch(fetch(`${API_URL}start=${getISO(start)}&end=${getISO(end)}`))
+  );
 
   return (
     <Container>
@@ -70,13 +78,7 @@ function DateRangeForm({onUpdate}) {
         />
         <Col md={2}>
           <Button
-            onClick={(e) => {
-              // Format start and end
-              fetch(`${API_URL}/OAX/forecasts/analyze?start=${getISO(start)}&end=${getISO(end)}`)
-              .then((resp) => resp.text())
-              .then(onUpdate)
-              .catch((error) => console.log('Error: ', error));
-            }}
+            onClick={fetchReturn}
           >
             Analyze
           </Button>
@@ -86,19 +88,32 @@ function DateRangeForm({onUpdate}) {
   );
 }
 
-function analysisPage() {
-  let [analysis, setAnalysis] = useState();
+function AnalysisPage() {
+  let [analysis, setAnalysis] = useState(null);
+  let [loading, setLoading] = useState(false);
+  let resultsMessage = 'Select date range.';
 
+  if (loading) {
+    resultsMessage = 'Retrieving results...';
+  }
+  
   return (
     <Container>
       <Row>
-        <DateRangeForm onUpdate={setAnalysis} />
+        <DateRangeForm
+          onFetch={(req) => {
+            setLoading(true);
+            req.then((resp) => resp.json())
+            .then((json) => setAnalysis(json))
+            .catch((error) => resultsMessage = error);
+          }}
+        />
       </Row>
       <Row>
-        {analysis}
+        {analysis ? JSON.stringify(analysis) : ''}
       </Row>
     </Container>
   );
 }
 
-export default analysisPage;
+export default AnalysisPage;
