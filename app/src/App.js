@@ -7,7 +7,8 @@ import {
   VictoryAxis,
   VictoryLine,
   VictoryLegend,
-  VictoryVoronoiContainer
+  VictoryCursorContainer,
+  LineSegment
 } from 'victory';
 
 import DayPickerInput from 'react-day-picker/DayPickerInput';
@@ -88,7 +89,7 @@ function DateRangeForm({onFetch}) {
           <Button
             onClick={fetchReturn}
           >
-            Analyze
+            Submit
           </Button>
         </Col>
       </Row>
@@ -154,8 +155,11 @@ function AnalysisChart({analysis, weather='temperature'}) {
 
   const handleLegendClick = (labelName) => {
     if (
-      !getDisplayedLineNames().includes(labelName)
-      || (displayedLines.length > 2 && labelName !== 'Observed')
+      labelName in fcastLines
+      && (
+        !getDisplayedLineNames().includes(labelName)
+        || (displayedLines.length > 2 && labelName !== 'Observed')
+      )
     ) {
       setDisplayedLines([fcastLines[labelName], obsLine]);
     } else if (displayedLines.length < allLines.length) {
@@ -167,9 +171,10 @@ function AnalysisChart({analysis, weather='temperature'}) {
     <VictoryChart scale={{ x: "time" }} domainPadding={{ y: 20 }}
       padding={{ top: 75, bottom: 50, left: 50, right: 50 }}
       containerComponent={
-        <VictoryVoronoiContainer
+        <VictoryCursorContainer
           disable={displayedLines.length > 2 ? true : false}
-          labels={(datum) => `${Math.round(datum.y, 2)} at ${(new Date(datum.x)).getHours()}:00`}
+          cursorDimension='x'
+          cursorComponent={<LineSegment style={{ stroke: 'lightgrey' }} />}          
         />
       }
     >
@@ -182,10 +187,11 @@ function AnalysisChart({analysis, weather='temperature'}) {
         data={ getLegendData(allLines) }
         toggleDisplayed={handleLegendClick}
         events={[{
-            target: ["data", "labels"],
             eventHandlers: {
-              onClick: (e, f, g, h, i, j) => {
-                h.props.toggleDisplayed(f.datum.name);
+              onClick: (evt, target, i, legend) => {
+                if (target && target.datum) {
+                  legend.props.toggleDisplayed(target.datum.name);
+                }
               }
             }
         }]}
@@ -197,10 +203,19 @@ function AnalysisChart({analysis, weather='temperature'}) {
           const date = new Date(t);
           return `${date.getMonth() + 1}/${date.getDate()} ${date.getHours()}:00`
         }}
-        style={{ticks: {stroke: "black", size: 5}}}
+        style={{ ticks: { stroke: "black", size: 5 }, grid: { stroke: 'grey' } }}
         offsetY={50}
+        events={[{
+          eventHandlers: {
+            onClick: (a,b,c,d) => {
+              debugger;
+            }
+          }
+        }]}
       />
-      <VictoryAxis dependentAxis crossAxis={false}/>
+      <VictoryAxis dependentAxis crossAxis={false}
+        style={{ grid: { stroke: 'grey' } }}
+      />
 
       {displayedLines}
 

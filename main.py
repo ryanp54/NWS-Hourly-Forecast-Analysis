@@ -44,11 +44,11 @@ def cron_only(f):
 
 def allow_cors(f):
     @wraps(f)
-    def local_cors_fix(*args, **kwargs):
+    def cors_fix(*args, **kwargs):
         resp = f(*args, **kwargs)
         resp.headers['Access-Control-Allow-Origin'] = '*'
         return resp
-    return local_cors_fix
+    return cors_fix
 
 
 @app.route('/')
