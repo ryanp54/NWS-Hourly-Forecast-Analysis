@@ -20,3 +20,8 @@ export function getDaysAgo(days) {
 export function getISO(date) {
 	return date.toISOString().split('T')[0];
 }
+
+export function parseToUTC(iso) {
+	const date = new Date(iso);
+	return new Date(Date.UTC(date.getYear(), date.getMonth(), date.getDate(), date.getHours()));
+}

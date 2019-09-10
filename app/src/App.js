@@ -14,7 +14,7 @@ import {
 import DayPickerInput from 'react-day-picker/DayPickerInput';
 import 'react-day-picker/lib/style.css';
 
-import { getDaysAgo, getISO } from './dateUtilities.js';
+import { getDaysAgo, getISO, parseToUTC } from './dateUtilities.js';
 
 const API_URL = '_self' in React.createElement('div') ?
   'https://weather2019.appspot.com/OAX/forecasts/analyze?' :
@@ -101,7 +101,7 @@ function AnalysisChart({analysis, weather='temperature'}) {
   const obsData = analysis.obs.reduce((data, ob) => {
     if (ob.observed_weather[weather]) {
       data.push({
-        x: ob.time,
+        x: parseToUTC(ob.time),
         y: ob.observed_weather[weather],
       });
     }
@@ -110,7 +110,7 @@ function AnalysisChart({analysis, weather='temperature'}) {
 
   const getFcastData = (leadDays) => {
     return analysis.fcasts[leadDays].map((fcast) => ({
-      x: fcast.valid_time,
+      x: parseToUTC(fcast.valid_time),
       y: fcast.predicted_weather[weather]
     }));
   };
@@ -168,58 +168,63 @@ function AnalysisChart({analysis, weather='temperature'}) {
   }
   
   return (
-    <VictoryChart scale={{ x: "time" }} domainPadding={{ y: 20 }}
-      padding={{ top: 75, bottom: 50, left: 50, right: 50 }}
-      containerComponent={
-        <VictoryCursorContainer
-          disable={displayedLines.length > 2 ? true : false}
-          cursorDimension='x'
-          cursorComponent={<LineSegment style={{ stroke: 'lightgrey' }} />}          
-        />
-      }
-    >
-      <VictoryLegend x={50} y={35}
-        orientation="horizontal"
-        borderPadding={{ top: 5, bottom: 0, left: 5, right: 5 }}
-        gutter={10}
-        symbolSpacer={5}
-        style={{ border: { stroke: "black" }, labels: { fontSize: 9 } }}
-        data={ getLegendData(allLines) }
-        toggleDisplayed={handleLegendClick}
-        events={[{
-            eventHandlers: {
-              onClick: (evt, target, i, legend) => {
-                if (target && target.datum) {
-                  legend.props.toggleDisplayed(target.datum.name);
-                }
-              }
-            }
-        }]}
-      />
-      
-      <VictoryAxis
-        tickCount={4}
-        tickFormat={(t) => {
-          const date = new Date(t);
-          return `${date.getMonth() + 1}/${date.getDate()} ${date.getHours()}:00`
-        }}
-        style={{ ticks: { stroke: "black", size: 5 }, grid: { stroke: 'grey' } }}
-        offsetY={50}
-        events={[{
-          eventHandlers: {
-            onClick: (a,b,c,d) => {
-              debugger;
-            }
+    <Container>
+      <Row>
+        <VictoryChart scale={{ x: "time" }} domainPadding={{ y: 20 }}
+          padding={{ top: 75, bottom: 50, left: 50, right: 50 }}
+          containerComponent={
+            <VictoryCursorContainer
+              disable={displayedLines.length > 2 ? true : false}
+              cursorDimension='x'
+              cursorComponent={<LineSegment style={{ stroke: 'lightgrey' }} />}
+              onCursorChange={(a,b,c,d,e,f) => { debugger; }}       
+            />
           }
-        }]}
-      />
-      <VictoryAxis dependentAxis crossAxis={false}
-        style={{ grid: { stroke: 'grey' } }}
-      />
-
-      {displayedLines}
-
-    </VictoryChart>    
+        >
+          <VictoryLegend x={50} y={35}
+            orientation="horizontal"
+            borderPadding={{ top: 5, bottom: 0, left: 5, right: 5 }}
+            gutter={10}
+            symbolSpacer={5}
+            style={{ border: { stroke: "black" }, labels: { fontSize: 9 } }}
+            data={ getLegendData(allLines) }
+            toggleDisplayed={handleLegendClick}
+            events={[{
+                eventHandlers: {
+                  onClick: (evt, target, i, legend) => {
+                    if (target && target.datum) {
+                      legend.props.toggleDisplayed(target.datum.name);
+                    }
+                  }
+                }
+            }]}
+          />
+          
+          <VictoryAxis
+            tickCount={6}
+            tickFormat={(dateTime) => {
+              const date = `${dateTime.getMonth() + 1}/${dateTime.getDate()}`;
+              let time = dateTime.toLocaleTimeString().split(/[:\s]/);
+              return dateTime.getHours() ? `${time[0]} ${time.slice(-1)}` : date;
+            }}
+            style={{ ticks: { stroke: "black", size: 5 }, grid: { stroke: 'grey' } }}
+            offsetY={50}
+          />
+          <VictoryAxis dependentAxis crossAxis={false}
+            style={{ grid: { stroke: 'grey' } }}
+          />
+            
+          {displayedLines}
+            
+        </VictoryChart>
+      </Row>
+      <Row>
+        <h6>{weather[0].toUpperCase() + weather.slice(1)}</h6><br/>
+        <p>
+          {displayedLines.map((line) => <span key={line.props.name}>{`${line.props.name}: `}</span>)}
+        </p>
+      </Row>
+    </Container>
   );
 }
 
@@ -242,9 +247,9 @@ function AnalysisPage() {
       </Row>
       <Row>
         {
-          analysis ?
-            <AnalysisChart analysis={analysis} weather='temperature' /> :
-            resultsMessage
+          analysis
+            ? <AnalysisChart analysis={analysis} weather='temperature' />
+            : resultsMessage
         }
       </Row>
     </Container>
