@@ -4,6 +4,7 @@ import './App.css';
 
 import {
   VictoryChart,
+  VictoryContainer,
   VictoryAxis,
   VictoryLine,
   VictoryLegend,
@@ -14,6 +15,7 @@ import DayPickerInput from 'react-day-picker/DayPickerInput';
 import 'react-day-picker/lib/style.css';
 
 import { getDaysAgo, getISODate, parseToUTC } from './dateUtilities.js';
+import { testData } from './testData.js';
 
 const API_URL = '_self' in React.createElement('div') ?
   'https://weather2019.appspot.com/OAX/forecasts/analyze?' :
@@ -69,7 +71,12 @@ function DateRangeForm({onFetch}) {
     onFetch(fetch(`${API_URL}start=${getISODate(start)}&end=${getISODate(end)}`))
   );
 
-  useEffect(fetchReturn, []);
+  useEffect(() => onFetch(Promise.resolve(
+    new Response(
+      testData,
+      { "status": 200, headers: { "Content-Type": "application/json" } }
+    ))
+  ), []);
 
   return (
     <Container>
@@ -123,7 +130,6 @@ function AnalysisChart({analysis, weather='temperature'}) {
     }
     return data;
   }, []);
-  debugger
 
   const getFcastData = (leadDays) => {
     return analysis.fcasts[leadDays].map((fcast) => ({
@@ -183,11 +189,6 @@ function AnalysisChart({analysis, weather='temperature'}) {
       setDisplayedLines(allLines);
     }
   }
-
-  const toggleStats = (cursorValue, container) => {
-    const stats = [];
-    getDisplayedLineNames.forEach((lineName) => stats.push())
-  };
   
   return (
     <Container>
@@ -195,15 +196,15 @@ function AnalysisChart({analysis, weather='temperature'}) {
         <VictoryChart scale={{ x: "time" }} domainPadding={{ y: 20 }}
           padding={{ top: 75, bottom: 50, left: 50, right: 50 }}
           containerComponent={
-            <VictoryVoronoiContainer
-              disable={displayedLines.length > 2 ? true : false}
-              voronoiDimension='x'
-              labels={() => ''}
-              labelComponent={<Cursor />}
-              onActivated={(points, props) => {
-                debugger;
-              }}
-            />
+            displayedLines.length > 2
+              ? <VictoryContainer />
+              : <VictoryVoronoiContainer
+                voronoiDimension='x'
+                labels={() => null}
+                labelComponent={<Cursor />}
+                onActivated={(points, props) => {
+                }}
+              />
           }
         >
           <VictoryLegend x={50} y={35}
