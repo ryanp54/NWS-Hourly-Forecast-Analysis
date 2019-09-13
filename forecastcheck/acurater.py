@@ -251,11 +251,11 @@ class FcastAnalysis(object):
 
     def _analyze(self):
         for ob in self.obs:
+            self.data['obs'].append(ob.to_dict())
             self.fcasts = Forecast.query(
                 Forecast.valid_time == ob.time
             ).fetch()
             for fcast in self.fcasts:
-                self.data['obs'].append(ob.to_dict())
                 self.data['fcasts'][str(fcast.lead_days)].append(
                     fcast.to_dict()
                 )
