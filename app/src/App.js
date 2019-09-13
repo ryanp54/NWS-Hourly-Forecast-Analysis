@@ -120,12 +120,44 @@ function Cursor(props) {
   );
 }
 
-function AnalysisChart({analysis, weather='temperature'}) {
+function ActiveDataDisplay({ displayName, data }) {
+  if (!data || data.length === 0) {
+    return '';
+  }
+
+  return (
+    <Container>
+      <Row>
+        <h6>Time</h6>
+        <p>
+           {`${data[0].x.toLocaleString({dateStyle: 'short', timeStyle: 'short'})}`}
+        </p>
+      </Row>
+      <Row>
+        <h6>{displayName}</h6>
+        <p>
+          {
+            data.map((datum) => (
+              <span key={datum.childName}>
+                {`${datum.childName}: ${Math.round(datum.y * 10) / 10}` }
+              </span>
+            ))
+          }
+        </p>
+      </Row>
+    </Container>
+  );
+}
+
+function AnalysisChart({
+  analysis,
+  weather = { propName: 'temperature', displayName: 'Temperature' }
+}) {
   const obsData = analysis.obs.reduce((data, ob) => {
-    if (ob.observed_weather[weather]) {
+    if (ob.observed_weather[weather.propName]) {
       data.push({
         x: parseToUTC(ob.time),
-        y: ob.observed_weather[weather],
+        y: ob.observed_weather[weather.propName],
       });
     }
     return data;
@@ -134,7 +166,7 @@ function AnalysisChart({analysis, weather='temperature'}) {
   const getFcastData = (leadDays) => {
     return analysis.fcasts[leadDays].map((fcast) => ({
       x: parseToUTC(fcast.valid_time),
-      y: fcast.predicted_weather[weather]
+      y: fcast.predicted_weather[weather.propName]
     }));
   };
   
@@ -172,6 +204,8 @@ function AnalysisChart({analysis, weather='temperature'}) {
   }
   const allLines = [...Object.values(fcastLines), obsLine];
 
+    // eslint-disable-next-line react-hooks/rules-of-hooks
+  let [activeData, setActiveData] = useState(false);
   // eslint-disable-next-line react-hooks/rules-of-hooks
   let [displayedLines, setDisplayedLines] = useState(allLines);
   const getDisplayedLineNames = () => displayedLines.map((line) => line.props.name);
@@ -187,6 +221,7 @@ function AnalysisChart({analysis, weather='temperature'}) {
       setDisplayedLines([fcastLines[labelName], obsLine]);
     } else if (displayedLines.length < allLines.length) {
       setDisplayedLines(allLines);
+      setActiveData(false);
     }
   }
   
@@ -202,8 +237,7 @@ function AnalysisChart({analysis, weather='temperature'}) {
                 voronoiDimension='x'
                 labels={() => null}
                 labelComponent={<Cursor />}
-                onActivated={(points, props) => {
-                }}
+                onActivated={(points) => setActiveData(points)}
               />
           }
         >
@@ -245,10 +279,7 @@ function AnalysisChart({analysis, weather='temperature'}) {
         </VictoryChart>
       </Row>
       <Row>
-        <h6>{weather[0].toUpperCase() + weather.slice(1)}</h6><br/>
-        <p>
-          {displayedLines.map((line) => <span key={line.props.name}>{`${line.props.name}: `}</span>)}
-        </p>
+        <ActiveDataDisplay displayName={weather.displayName} data={activeData} />
       </Row>
     </Container>
   );
@@ -274,7 +305,7 @@ function AnalysisPage() {
       <Row>
         {
           analysis
-            ? <AnalysisChart analysis={analysis} weather='temperature' />
+            ? <AnalysisChart analysis={analysis} />
             : resultsMessage
         }
       </Row>
