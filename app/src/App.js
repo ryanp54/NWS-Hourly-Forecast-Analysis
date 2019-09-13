@@ -7,14 +7,13 @@ import {
   VictoryAxis,
   VictoryLine,
   VictoryLegend,
-  VictoryCursorContainer,
-  LineSegment
+  VictoryVoronoiContainer,
 } from 'victory';
 
 import DayPickerInput from 'react-day-picker/DayPickerInput';
 import 'react-day-picker/lib/style.css';
 
-import { getDaysAgo, getISO, parseToUTC } from './dateUtilities.js';
+import { getDaysAgo, getISODate, parseToUTC } from './dateUtilities.js';
 
 const API_URL = '_self' in React.createElement('div') ?
   'https://weather2019.appspot.com/OAX/forecasts/analyze?' :
@@ -67,7 +66,7 @@ function DateRangeForm({onFetch}) {
   let [end, setEnd] = useState(getDaysAgo(3));
 
   const fetchReturn = () => (
-    onFetch(fetch(`${API_URL}start=${getISO(start)}&end=${getISO(end)}`))
+    onFetch(fetch(`${API_URL}start=${getISODate(start)}&end=${getISODate(end)}`))
   );
 
   useEffect(fetchReturn, []);
@@ -97,6 +96,23 @@ function DateRangeForm({onFetch}) {
   );
 }
 
+function Cursor(props) {
+  const { x, scale } = props;
+  const range = scale.y.range();
+  return (
+    <line
+      style={{
+        stroke: "lightgrey",
+        strokeWidth: 1
+      }}
+      x1={x}
+      x2={x}
+      y1={Math.max(...range)}
+      y2={Math.min(...range)}
+    />
+  );
+}
+
 function AnalysisChart({analysis, weather='temperature'}) {
   const obsData = analysis.obs.reduce((data, ob) => {
     if (ob.observed_weather[weather]) {
@@ -107,6 +123,7 @@ function AnalysisChart({analysis, weather='temperature'}) {
     }
     return data;
   }, []);
+  debugger
 
   const getFcastData = (leadDays) => {
     return analysis.fcasts[leadDays].map((fcast) => ({
@@ -114,7 +131,7 @@ function AnalysisChart({analysis, weather='temperature'}) {
       y: fcast.predicted_weather[weather]
     }));
   };
-
+  
   const getLegendData = (lines) => lines.map((line) => {
     const style = line.props.style || line.props.theme.line.style;
     return {
@@ -153,7 +170,7 @@ function AnalysisChart({analysis, weather='temperature'}) {
   let [displayedLines, setDisplayedLines] = useState(allLines);
   const getDisplayedLineNames = () => displayedLines.map((line) => line.props.name);
 
-  const handleLegendClick = (labelName) => {
+  const toggleDisplayed = (labelName) => {
     if (
       labelName in fcastLines
       && (
@@ -166,6 +183,11 @@ function AnalysisChart({analysis, weather='temperature'}) {
       setDisplayedLines(allLines);
     }
   }
+
+  const toggleStats = (cursorValue, container) => {
+    const stats = [];
+    getDisplayedLineNames.forEach((lineName) => stats.push())
+  };
   
   return (
     <Container>
@@ -173,11 +195,14 @@ function AnalysisChart({analysis, weather='temperature'}) {
         <VictoryChart scale={{ x: "time" }} domainPadding={{ y: 20 }}
           padding={{ top: 75, bottom: 50, left: 50, right: 50 }}
           containerComponent={
-            <VictoryCursorContainer
+            <VictoryVoronoiContainer
               disable={displayedLines.length > 2 ? true : false}
-              cursorDimension='x'
-              cursorComponent={<LineSegment style={{ stroke: 'lightgrey' }} />}
-              onCursorChange={(a,b,c,d,e,f) => { debugger; }}       
+              voronoiDimension='x'
+              labels={() => ''}
+              labelComponent={<Cursor />}
+              onActivated={(points, props) => {
+                debugger;
+              }}
             />
           }
         >
@@ -188,7 +213,7 @@ function AnalysisChart({analysis, weather='temperature'}) {
             symbolSpacer={5}
             style={{ border: { stroke: "black" }, labels: { fontSize: 9 } }}
             data={ getLegendData(allLines) }
-            toggleDisplayed={handleLegendClick}
+            toggleDisplayed={toggleDisplayed}
             events={[{
                 eventHandlers: {
                   onClick: (evt, target, i, legend) => {
