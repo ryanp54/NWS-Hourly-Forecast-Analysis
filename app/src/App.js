@@ -6,6 +6,7 @@ import {
   VictoryChart,
   VictoryContainer,
   VictoryAxis,
+  VictoryArea,
   VictoryLine,
   VictoryLegend,
   VictoryVoronoiContainer,
@@ -120,30 +121,68 @@ function Cursor(props) {
   );
 }
 
+function LabeledValue(props) {
+  return (
+    <span key={props.label} className={`mr-3 ${props.className}`}>
+      <span>{props.label}: </span>
+      <span className='font-weight-light ml-2'>
+        {
+          `${Math.round(props.value * 10) / 10}`
+        }
+      </span>
+    </span>
+  );
+}
+
 function ActiveDataDisplay({ displayName, data }) {
   if (!data || data.length === 0) {
     return '';
+  }
+  const formattedData = [];
+  let formattedErrorDatum;
+  data.forEach((datum) => {
+    if (!datum.childName.includes('Error')) {
+      formattedData.push(<LabeledValue label={datum.childName} value={datum.y} />);
+    } else {
+      formattedErrorDatum = 
+        <LabeledValue
+          label='Forecast Error'
+          value={datum.amount}
+          className='text-danger'
+        />;
+    }
+  });
+
+  if (!formattedErrorDatum) {
+    const fcasts = data.filter((point) => point.childName !== 'Observed');
+    const obs = data.filter((point) => point.childName === 'Observed');
+    if (fcasts.length === 1 && obs.length === 1) {
+      formattedErrorDatum =
+        <LabeledValue
+          label='Forecast Error'
+          value={fcasts[0].y - obs[0].y}
+        />;
+    }
+  }
+
+  if (formattedErrorDatum) {
+    formattedData.push(formattedErrorDatum);
   }
 
   return (
     <Container>
       <Row>
-        <h6>Time</h6>
-        <p>
+        <h5 className='font-weight-normal'>
            {`${data[0].x.toLocaleString({dateStyle: 'short', timeStyle: 'short'})}`}
-        </p>
+         </h5>
       </Row>
       <Row>
-        <h6>{displayName}</h6>
-        <p>
-          {
-            data.map((datum) => (
-              <span key={datum.childName}>
-                {`${datum.childName}: ${Math.round(datum.y * 10) / 10}` }
-              </span>
-            ))
-          }
-        </p>
+        <Col xs={12} className='font-weight-bold'>
+          {displayName}
+        </Col>
+        <Col xs={12}>
+          {formattedData}
+        </Col>
       </Row>
     </Container>
   );
@@ -151,7 +190,7 @@ function ActiveDataDisplay({ displayName, data }) {
 
 function AnalysisChart({
   analysis,
-  weather = { propName: 'temperature', displayName: 'Temperature' }
+  weather = { propName: 'temperature', displayName: 'Temperature', errorThreshold: 1.67 }
 }) {
   const obsData = analysis.obs.reduce((data, ob) => {
     if (ob.observed_weather[weather.propName]) {
@@ -163,12 +202,43 @@ function AnalysisChart({
     return data;
   }, []);
 
-  const getFcastData = (leadDays) => {
-    return analysis.fcasts[leadDays].map((fcast) => ({
-      x: parseToUTC(fcast.valid_time),
-      y: fcast.predicted_weather[weather.propName]
-    }));
-  };
+  const [fcastData, errorData] = (() => {
+    const forecasts = {};
+    const errors = {};
+    for (const day in analysis.fcasts) {
+      forecasts[day] = [];
+      errors[day] = [];
+
+      analysis.fcasts[day].forEach((fcast) => {
+        const time = parseToUTC(fcast.valid_time);
+        const fcastValue = fcast.predicted_weather[weather.propName];
+        forecasts[day].push({
+          x: time,
+          y: fcastValue,
+        });
+
+        const obs = obsData.filter((ob) => ob.x.valueOf() === time.valueOf());
+        if (obs.length === 1 && Math.abs(fcastValue - obs[0].y) > weather.errorThreshold) {
+          const erreaDatum = {
+            x: time,
+            y: fcastValue,
+            y0: obs[0].y,
+            amount: fcastValue - obs[0].y
+          };
+          const lastErrea = errors[day].length > 0 ? errors[day][errors[day].length - 1] : false;
+          if (
+            lastErrea
+            && lastErrea.slice(-1)[0].x.valueOf() === time.valueOf() - 3600000
+          ) {
+            lastErrea.push(erreaDatum);
+          } else {
+            errors[day].push([erreaDatum]);
+          }
+        }
+      });
+    }
+    return [forecasts, errors];
+  })();
   
   const getLegendData = (lines) => lines.map((line) => {
     const style = line.props.style || line.props.theme.line.style;
@@ -186,12 +256,12 @@ function AnalysisChart({
 
   const obsLine = <VictoryLine name={'Observed'} data={obsData} key='obs' />;
   const fcastLines = {};
-  for (const leadDays in analysis.fcasts) {
+  for (const leadDays in fcastData) {
     const name = `${leadDays}-Day`;
     fcastLines[name] = (
       <VictoryLine
         name={name}
-        data={getFcastData(leadDays)}
+        data={fcastData[leadDays]}
         style={{
           data: {
             opacity: leadDays > 1 ? (9 - leadDays)/10 : 1.0,
@@ -204,10 +274,31 @@ function AnalysisChart({
   }
   const allLines = [...Object.values(fcastLines), obsLine];
 
-    // eslint-disable-next-line react-hooks/rules-of-hooks
-  let [activeData, setActiveData] = useState(false);
-  // eslint-disable-next-line react-hooks/rules-of-hooks
+  const erreas = {};
+  for (const leadDays in errorData) {
+    const name = `${leadDays}-Day`;
+    erreas[name] = errorData[leadDays].map((errea, i) => (
+        <VictoryArea
+          name={`${name} Error ${i}`}
+          data={errea}
+          style={{
+            data: {
+              opacity: (leadDays > 1 ? (9 - leadDays)/10 : 1.0) * 0.4,
+              fill: 'magenta',
+              stroke: 'magenta'
+            }
+          }}
+          key={`${leadDays}-${i}`}
+      />
+    ));
+  }
+
+  /* eslint-disable react-hooks/rules-of-hooks */
+  let [activeData, setActiveData] = useState([]);
+  let [displayedErreas, setDisplayedErreas] = useState([]);
   let [displayedLines, setDisplayedLines] = useState(allLines);
+  /* eslint-enable react-hooks/rules-of-hooks */
+
   const getDisplayedLineNames = () => displayedLines.map((line) => line.props.name);
 
   const toggleDisplayed = (labelName) => {
@@ -219,12 +310,14 @@ function AnalysisChart({
       )
     ) {
       setDisplayedLines([fcastLines[labelName], obsLine]);
+      setDisplayedErreas(erreas[labelName]);
     } else if (displayedLines.length < allLines.length) {
       setDisplayedLines(allLines);
-      setActiveData(false);
+      setDisplayedErreas([])
     }
+    setActiveData([]);
   }
-  
+
   return (
     <Container>
       <Row>
@@ -237,7 +330,7 @@ function AnalysisChart({
                 voronoiDimension='x'
                 labels={() => null}
                 labelComponent={<Cursor />}
-                onActivated={(points) => setActiveData(points)}
+                onActivated={(points) => { setActiveData(points); }}
               />
           }
         >
@@ -273,7 +366,7 @@ function AnalysisChart({
           <VictoryAxis dependentAxis crossAxis={false}
             style={{ grid: { stroke: 'grey' } }}
           />
-            
+          {displayedErreas}
           {displayedLines}
             
         </VictoryChart>
