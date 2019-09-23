@@ -7,6 +7,7 @@ import {
   VictoryContainer,
   VictoryAxis,
   VictoryArea,
+  VictoryLabel,
   VictoryLine,
   VictoryLegend,
   VictoryVoronoiContainer,
@@ -123,7 +124,7 @@ function Cursor(props) {
 
 function LabeledValue(props) {
   return (
-    <span key={props.label} className={`mr-3 ${props.className}`}>
+    <span className={`mr-3 ${props.className}`}>
       <span>{props.label}: </span>
       <span className='font-weight-light ml-2'>
         {
@@ -142,25 +143,27 @@ function ActiveDataDisplay({ displayName, data }) {
   let formattedErrorDatum;
   data.forEach((datum) => {
     if (!datum.childName.includes('Error')) {
-      formattedData.push(<LabeledValue label={datum.childName} value={datum.y} />);
+      formattedData.push(<LabeledValue label={datum.childName} value={datum.y} key={datum.childName} />);
     } else {
       formattedErrorDatum = 
         <LabeledValue
           label='Forecast Error'
           value={datum.amount}
+          key='Forecast Error'
           className='text-danger'
         />;
     }
   });
 
   if (!formattedErrorDatum) {
-    const fcasts = data.filter((point) => point.childName !== 'Observed');
-    const obs = data.filter((point) => point.childName === 'Observed');
+    const fcasts = data.filter((point) => point.childName !== 'Actual');
+    const obs = data.filter((point) => point.childName === 'Actual');
     if (fcasts.length === 1 && obs.length === 1) {
       formattedErrorDatum =
         <LabeledValue
           label='Forecast Error'
           value={fcasts[0].y - obs[0].y}
+          key='Forecast Error'
         />;
     }
   }
@@ -240,21 +243,55 @@ function AnalysisChart({
     return [forecasts, errors];
   })();
   
-  const getLegendData = (lines) => lines.map((line) => {
-    const style = line.props.style || line.props.theme.line.style;
-    return {
-      name: line.props.name,
-      symbol: {
-        opacity: getDisplayedLineNames().includes(line.props.name) ? style.data.opacity : 0.05,
-        fill: style.data.stroke
-      },
-      labels: {
-        opacity: getDisplayedLineNames().includes(line.props.name) ? 1 : 0.15
+  const getLegendData = (lines, errea) => {
+    const data = lines.map((line) => {
+      const style = line.props.style || line.props.theme.line.style;
+      return {
+        name: line.props.name,
+        symbol: {
+          opacity: getDisplayedLineNames().includes(line.props.name) ? style.data.opacity : 0.10,
+          fill: style.data.stroke,
+          cursor: 'pointer',
+        },
+        labels: {
+          opacity: getDisplayedLineNames().includes(line.props.name) ? 1 : 0.20,
+          cursor: 'pointer',
+        }
       }
+    });
+    if (errea.length === 0) {
+      data.push({
+        name: 'Error',
+        symbol: {
+          opacity: 0.10,
+          fill: 'magenta',
+          cursor: 'pointer',
+          type: 'square',
+        },
+        labels: {
+          opacity: 0.20,
+          cursor: 'pointer',
+        }
+      });
+    } else {
+      const style = errea[0].props.style
+      data.push({
+        name: 'Error',
+        symbol: {
+          opacity: style.data.opacity,
+          fill: style.data.stroke,
+          cursor: 'pointer',
+          type: 'square',
+        },
+        labels: {
+          cursor: 'pointer',
+        }
+      });
     }
-  });
+    return data;
+  };
 
-  const obsLine = <VictoryLine name={'Observed'} data={obsData} key='obs' />;
+  const obsLine = <VictoryLine name={'Actual'} data={obsData} key='obs' />;
   const fcastLines = {};
   for (const leadDays in fcastData) {
     const name = `${leadDays}-Day`;
@@ -306,7 +343,7 @@ function AnalysisChart({
       labelName in fcastLines
       && (
         !getDisplayedLineNames().includes(labelName)
-        || (displayedLines.length > 2 && labelName !== 'Observed')
+        || (displayedLines.length > 2 && labelName !== 'Actual')
       )
     ) {
       setDisplayedLines([fcastLines[labelName], obsLine]);
@@ -322,7 +359,7 @@ function AnalysisChart({
     <Container>
       <Row>
         <VictoryChart scale={{ x: "time" }} domainPadding={{ y: 20 }}
-          padding={{ top: 75, bottom: 50, left: 50, right: 50 }}
+          padding={{ top: 50, bottom: 50, left: 50, right: 75 }}
           containerComponent={
             displayedLines.length > 2
               ? <VictoryContainer />
@@ -334,13 +371,16 @@ function AnalysisChart({
               />
           }
         >
-          <VictoryLegend x={50} y={35}
+          <VictoryLabel x={200} y={15} textAnchor='middle'
+            text={weather.displayName}
+          />
+          <VictoryLegend x={25} y={25}
             orientation="horizontal"
-            borderPadding={{ top: 5, bottom: 0, left: 5, right: 5 }}
+            borderPadding={{ top: 5, bottom: 0, left: 5, right: 0 }}
             gutter={10}
             symbolSpacer={5}
-            style={{ border: { stroke: "black" }, labels: { fontSize: 9 } }}
-            data={ getLegendData(allLines) }
+            style={{ labels: { fontSize: 9 } }}
+            data={ getLegendData(allLines, displayedErreas) }
             toggleDisplayed={toggleDisplayed}
             events={[{
                 eventHandlers: {
@@ -363,8 +403,12 @@ function AnalysisChart({
             style={{ ticks: { stroke: "black", size: 5 }, grid: { stroke: 'grey' } }}
             offsetY={50}
           />
-          <VictoryAxis dependentAxis crossAxis={false}
+          <VictoryAxis
+            dependentAxis
+            crossAxis={false}
             style={{ grid: { stroke: 'grey' } }}
+            label='Celcius'
+            axisLabelComponent={<VictoryLabel dy={-10} />}
           />
           {displayedErreas}
           {displayedLines}
