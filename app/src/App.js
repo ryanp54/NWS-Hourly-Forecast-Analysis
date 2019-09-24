@@ -7,6 +7,7 @@ import {
   VictoryContainer,
   VictoryAxis,
   VictoryArea,
+  VictoryGroup,
   VictoryLabel,
   VictoryLine,
   VictoryLegend,
@@ -105,23 +106,6 @@ function DateRangeForm({onFetch}) {
   );
 }
 
-function Cursor(props) {
-  const { x, scale } = props;
-  const range = scale.y.range();
-  return (
-    <line
-      style={{
-        stroke: "lightgrey",
-        strokeWidth: 1
-      }}
-      x1={x}
-      x2={x}
-      y1={Math.max(...range)}
-      y2={Math.min(...range)}
-    />
-  );
-}
-
 function LabeledValue(props) {
   return (
     <span className={`mr-3 ${props.className}`}>
@@ -191,6 +175,22 @@ function ActiveDataDisplay({ displayName, data }) {
   );
 }
 
+function Cursor({ x, scale }) {
+  const range = scale.y.range();
+  return (
+    <line
+      style={{
+        stroke: "lightgrey",
+        strokeWidth: 1
+      }}
+      x1={x}
+      x2={x}
+      y1={Math.max(...range)}
+      y2={Math.min(...range)}
+    />
+  );
+}
+
 function AnalysisChart({
   analysis,
   weather = { propName: 'temperature', displayName: 'Temperature', errorThreshold: 1.67 }
@@ -249,17 +249,18 @@ function AnalysisChart({
       return {
         name: line.props.name,
         symbol: {
-          opacity: getDisplayedLineNames().includes(line.props.name) ? style.data.opacity : 0.10,
+          opacity: getNamesOfCharted().includes(line.props.name) ? style.data.opacity : 0.10,
           fill: style.data.stroke,
           cursor: 'pointer',
         },
         labels: {
-          opacity: getDisplayedLineNames().includes(line.props.name) ? 1 : 0.20,
+          opacity: getNamesOfCharted().includes(line.props.name) ? 1 : 0.20,
           cursor: 'pointer',
         }
       }
     });
-    if (errea.length === 0) {
+
+    if (!errea) {
       data.push({
         name: 'Error',
         symbol: {
@@ -274,7 +275,7 @@ function AnalysisChart({
         }
       });
     } else {
-      const style = errea[0].props.style
+      const style = errea.props.style
       data.push({
         name: 'Error',
         symbol: {
@@ -311,46 +312,65 @@ function AnalysisChart({
   }
   const allLines = [...Object.values(fcastLines), obsLine];
 
+  const makeErrea = (leadDays, areas) => (
+    <VictoryGroup
+      name='Error'
+      style={{
+        data: {
+          opacity: (leadDays > 1 ? (9 - leadDays)/10 : 1.0) * 0.4,
+          fill: 'magenta',
+          stroke: 'magenta'
+        }
+      }}
+    >
+    {areas}
+    </VictoryGroup>
+  );
+
   const erreas = {};
   for (const leadDays in errorData) {
-    const name = `${leadDays}-Day`;
-    erreas[name] = errorData[leadDays].map((errea, i) => (
-        <VictoryArea
-          name={`${name} Error ${i}`}
-          data={errea}
-          style={{
-            data: {
-              opacity: (leadDays > 1 ? (9 - leadDays)/10 : 1.0) * 0.4,
-              fill: 'magenta',
-              stroke: 'magenta'
-            }
-          }}
-          key={`${leadDays}-${i}`}
-      />
-    ));
+    erreas[`${leadDays}-Day`] = (
+      <VictoryGroup
+        name='Error'
+        style={{
+          data: {
+            opacity: (leadDays > 1 ? (9 - leadDays)/10 : 1.0) * 0.4,
+            fill: 'magenta',
+            stroke: 'magenta'
+          }
+        }}
+      >
+        {errorData[leadDays].map((errea, i) => (
+              <VictoryArea
+                data={errea}
+                key={`Area-${i}`}
+            />
+        ))}
+      </VictoryGroup>
+    );
   }
-
+  
   /* eslint-disable react-hooks/rules-of-hooks */
   let [activeData, setActiveData] = useState([]);
-  let [displayedErreas, setDisplayedErreas] = useState([]);
+  let [displayedErrea, setDisplayedErrea] = useState(null);
   let [displayedLines, setDisplayedLines] = useState(allLines);
   /* eslint-enable react-hooks/rules-of-hooks */
 
-  const getDisplayedLineNames = () => displayedLines.map((line) => line.props.name);
+  const getNamesOfCharted = () => displayedLines.map((line) => line.props.name);
 
   const toggleDisplayed = (labelName) => {
     if (
       labelName in fcastLines
       && (
-        !getDisplayedLineNames().includes(labelName)
+        !getNamesOfCharted().includes(labelName)
         || (displayedLines.length > 2 && labelName !== 'Actual')
       )
     ) {
       setDisplayedLines([fcastLines[labelName], obsLine]);
-      setDisplayedErreas(erreas[labelName]);
+      setDisplayedErrea(erreas[labelName]);
     } else if (displayedLines.length < allLines.length) {
       setDisplayedLines(allLines);
-      setDisplayedErreas([])
+      setDisplayedErrea(null)
     }
     setActiveData([]);
   }
@@ -375,12 +395,12 @@ function AnalysisChart({
             text={weather.displayName}
           />
           <VictoryLegend x={25} y={25}
-            orientation="horizontal"
-            borderPadding={{ top: 5, bottom: 0, left: 5, right: 0 }}
+            orientation='horizontal'
+            borderPadding={{ top: 0, bottom: 0, left: 5, right: 0 }}
             gutter={10}
             symbolSpacer={5}
             style={{ labels: { fontSize: 9 } }}
-            data={ getLegendData(allLines, displayedErreas) }
+            data={ getLegendData(allLines, displayedErrea) }
             toggleDisplayed={toggleDisplayed}
             events={[{
                 eventHandlers: {
@@ -400,17 +420,24 @@ function AnalysisChart({
               let time = dateTime.toLocaleTimeString().split(/[:\s]/);
               return dateTime.getHours() ? `${time[0]} ${time.slice(-1)}` : date;
             }}
-            style={{ ticks: { stroke: "black", size: 5 }, grid: { stroke: 'grey' } }}
+            style={{
+              ticks: { stroke: "black", size: 5 },
+              tickLabels: { fontSize: 12 },
+              grid: { stroke: 'grey' },
+            }}
             offsetY={50}
           />
           <VictoryAxis
             dependentAxis
             crossAxis={false}
-            style={{ grid: { stroke: 'grey' } }}
-            label='Celcius'
-            axisLabelComponent={<VictoryLabel dy={-10} />}
+            style={{
+              grid: { stroke: 'grey' },
+              tickLabels: { fontSize: 12 },
+            }}
+            label='°C'
+            axisLabelComponent={<VictoryLabel dx={-15} angle={0} />}
           />
-          {displayedErreas}
+          {displayedErrea}
           {displayedLines}
             
         </VictoryChart>
