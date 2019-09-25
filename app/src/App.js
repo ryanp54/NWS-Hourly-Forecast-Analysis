@@ -106,18 +106,245 @@ function DateRangeForm({onFetch}) {
   );
 }
 
-function LabeledValue(props) {
-  return (
-    <span className={`mr-3 ${props.className}`}>
-      <span>{props.label}: </span>
-      <span className='font-weight-light ml-2'>
-        {
-          `${Math.round(props.value * 10) / 10}`
+function AnalysisChart({
+  analysis,
+  weather = { propName: 'temperature', displayName: 'Temperature', errorThreshold: 1.67 }
+}) {
+  let [activeData, setActiveData] = useState([]);
+ 
+  const allLeadDays = Object.keys(analysis.fcastData).map((key) => `${key}-Day`);
+  // Is this an anti-pattern?
+  let [activeLeadDays, setActiveLeadDays] = useState(allLeadDays);
+
+  const forecastLines = Object.keys(analysis.fcastData).map((leadDay) => (
+      <VictoryLine
+        name={`${leadDay}-Day`}
+        data={analysis.fcastData[leadDay]}
+        style={{
+          data: {
+            opacity: leadDay > 1 ? (9 - leadDay)/10 : 1.0,
+            stroke: 'rgb(256, 0, 0)'
+          }
+        }}
+        key={leadDay}
+      />  
+    )
+  );
+
+  const displayedLines = activeLeadDays.map((leadDay) => (
+      <VictoryLine
+        name={leadDay}
+        data={analysis.fcastData[leadDay[0]]}
+        style={{
+          data: {
+            opacity: leadDay[0] > 1 ? (9 - leadDay[0])/10 : 1.0,
+            stroke: 'rgb(256, 0, 0)'
+          }
+        }}
+        key={leadDay}
+      />
+    )
+  );
+
+  const observedLine = <VictoryLine name={'Actual'} data={analysis.obsData} key='obs' />;
+
+  const displayedErrea = activeLeadDays.length === 1 && (
+    <VictoryGroup
+      name='Error'
+      style={{
+        data: {
+          opacity: (activeLeadDays[0][0] > 1 ? (9 - activeLeadDays[0][0])/10 : 1.0) * 0.4,
+          fill: 'magenta',
+          stroke: 'magenta'
         }
-      </span>
-    </span>
+      }}
+    >
+      {analysis.errorData[activeLeadDays[0][0]].map((errea, i) => (
+            <VictoryArea
+              data={errea}
+              key={`Area-${i}`}
+          />
+      ))}
+    </VictoryGroup>
+  );
+
+  const getLegendData = () => {
+    const allDisplayedLines = [...activeLeadDays, observedLine.props.name];
+    const data = [...forecastLines, observedLine].map((line) => {
+      const style = line.props.style || line.props.theme.line.style;
+      return {
+        name: line.props.name,
+        symbol: {
+          opacity: allDisplayedLines.includes(line.props.name)
+            ? style.data.opacity
+            : 0.10,
+          fill: style.data.stroke,
+          cursor: 'pointer',
+        },
+        labels: {
+          opacity: allDisplayedLines.includes(line.props.name) ? 1 : 0.20,
+          cursor: 'pointer',
+        }
+      }
+    });
+
+    if (!displayedErrea) {
+      data.push({
+        name: 'Error',
+        symbol: {
+          opacity: 0.10,
+          fill: 'magenta',
+          cursor: 'pointer',
+          type: 'square',
+        },
+        labels: {
+          opacity: 0.20,
+          cursor: 'pointer',
+        }
+      });
+    } else {
+      const style = displayedErrea.props.style
+      data.push({
+        name: 'Error',
+        symbol: {
+          opacity: style.data.opacity,
+          fill: style.data.stroke,
+          cursor: 'pointer',
+          type: 'square',
+        },
+        labels: {
+          cursor: 'pointer',
+        }
+      });
+    }
+    return data;
+  };
+
+  const toggleDisplayed = (labelName) => {
+    const leadDay = labelName;
+    if (allLeadDays.length === activeLeadDays.length) {
+      if (labelName === 'Error') {
+        setActiveLeadDays([allLeadDays[0]]);
+      } else if (allLeadDays.includes(leadDay)) {
+        setActiveLeadDays([leadDay]);
+      }
+    } else if (labelName === 'Actual' || activeLeadDays.includes(leadDay)) {
+      setActiveLeadDays(allLeadDays);
+    } else if (allLeadDays.includes(leadDay)) {
+      setActiveLeadDays([leadDay]);
+    }
+    setActiveData([]);
+  }
+
+  return (
+    <Container>
+      <Row>
+        <VictoryChart scale={{ x: "time" }} domainPadding={{ y: 20 }}
+          padding={{ top: 50, bottom: 50, left: 50, right: 75 }}
+          containerComponent={
+            activeLeadDays.length > 1
+              ? <VictoryContainer />
+              : <VictoryVoronoiContainer
+                voronoiDimension='x'
+                labels={() => null}
+                labelComponent={<Cursor />}
+                onActivated={(points) => {
+                  // Handle bug where point is sent multiple times
+                  const eventKeys = Array.from(new Set(points.map((point) => point.eventKey)));
+                  let realEvent = eventKeys.reduce(
+                    (max, key) => {
+                      const count = points.filter((point) => point.eventKey === key).length;
+                      if (count > max.count) {
+                        return { count, key };
+                      }
+                      return max;
+                    },
+                    { count: 0 }
+                  );
+                  if (realEvent.key !== undefined) {
+                    setActiveData(points.filter((point) => point.eventKey === realEvent.key));
+                  }
+                }}
+              />
+          }
+        >
+          <VictoryLabel x={200} y={15} textAnchor='middle'
+            text={weather.displayName}
+          />
+          <VictoryLegend x={25} y={25}
+            orientation='horizontal'
+            borderPadding={{ top: 0, bottom: 0, left: 5, right: 0 }}
+            gutter={10}
+            symbolSpacer={5}
+            style={{ labels: { fontSize: 9 } }}
+            data={ getLegendData(forecastLines) }
+            toggleDisplayed={toggleDisplayed}
+            events={[{
+                eventHandlers: {
+                  onClick: (evt, target, i, legend) => {
+                    if (target && target.datum) {
+                      legend.props.toggleDisplayed(target.datum.name);
+                    }
+                  }
+                }
+            }]}
+          />
+          
+          <VictoryAxis
+            tickCount={6}
+            tickFormat={(dateTime) => {
+              const date = `${dateTime.getMonth() + 1}/${dateTime.getDate()}`;
+              let time = dateTime.toLocaleTimeString().split(/[:\s]/);
+              return dateTime.getHours() ? `${time[0]} ${time.slice(-1)}` : date;
+            }}
+            style={{
+              ticks: { stroke: "black", size: 5 },
+              tickLabels: { fontSize: 12 },
+              grid: { stroke: 'grey' },
+            }}
+            offsetY={50}
+          />
+          <VictoryAxis
+            dependentAxis
+            crossAxis={false}
+            style={{
+              grid: { stroke: 'grey' },
+              tickLabels: { fontSize: 12 },
+            }}
+            label='°C'
+            axisLabelComponent={<VictoryLabel dx={-15} angle={0} />}
+          />
+
+          {displayedErrea}
+          {displayedLines}
+          {observedLine}
+            
+        </VictoryChart>
+      </Row>
+      <Row>
+        <ActiveDataDisplay displayName={weather.displayName} data={activeData} />
+      </Row>
+    </Container>
   );
 }
+
+function Cursor({ x, scale }) {
+  const range = scale.y.range();
+  return (
+    <line
+      style={{
+        stroke: "lightgrey",
+        strokeWidth: 1
+      }}
+      x1={x}
+      x2={x}
+      y1={Math.max(...range)}
+      y2={Math.min(...range)}
+    />
+  );
+}
+
+/* * * Active Data Display * * */
 
 function ActiveDataDisplay({ displayName, data }) {
   if (!data || data.length === 0) {
@@ -175,27 +402,52 @@ function ActiveDataDisplay({ displayName, data }) {
   );
 }
 
-function Cursor({ x, scale }) {
-  const range = scale.y.range();
+function LabeledValue(props) {
   return (
-    <line
-      style={{
-        stroke: "lightgrey",
-        strokeWidth: 1
-      }}
-      x1={x}
-      x2={x}
-      y1={Math.max(...range)}
-      y2={Math.min(...range)}
-    />
+    <span className={`mr-3 ${props.className}`}>
+      <span>{props.label}: </span>
+      <span className='font-weight-light ml-2'>
+        {
+          `${Math.round(props.value * 10) / 10}`
+        }
+      </span>
+    </span>
   );
 }
 
-function AnalysisChart({
-  analysis,
-  weather = { propName: 'temperature', displayName: 'Temperature', errorThreshold: 1.67 }
-}) {
-  const obsData = analysis.obs.reduce((data, ob) => {
+/* * * Main App * * */
+
+function AnalysisPage() {
+  let [analysis, setAnalysis] = useState(null);
+  let [resultsMessage, setResultsMessage] = useState('Select date range.');
+  
+  return (
+    <Container>
+      <Row>
+        <DateRangeForm
+          onFetch={(request) => {
+            setResultsMessage('Retrieving...');
+            setAnalysis(null);
+            request.then((resp) => resp.json())
+              .then((json) => { setAnalysis(formatDataForChart(json)); })
+              .catch((error) => setResultsMessage(error.message));
+          }}
+        />
+      </Row>
+      <Row>
+        {
+          analysis
+            ? <AnalysisChart analysis={analysis} />
+            : resultsMessage
+        }
+      </Row>
+    </Container>
+  );
+}
+
+function formatDataForChart(json) {
+  const weather = { propName: 'temperature', displayName: 'Temperature', errorThreshold: 1.67 };
+  const obsData = json.obs.reduce((data, ob) => {
     if (ob.observed_weather[weather.propName]) {
       data.push({
         x: parseToUTC(ob.time),
@@ -204,15 +456,14 @@ function AnalysisChart({
     }
     return data;
   }, []);
-
+  
   const [fcastData, errorData] = (() => {
     const forecasts = {};
     const errors = {};
-    for (const day in analysis.fcasts) {
+    for (const day in json.fcasts) {
       forecasts[day] = [];
       errors[day] = [];
-
-      analysis.fcasts[day].forEach((fcast) => {
+      json.fcasts[day].forEach((fcast) => {
         const time = parseToUTC(fcast.valid_time);
         const fcastValue = fcast.predicted_weather[weather.propName];
         forecasts[day].push({
@@ -240,241 +491,11 @@ function AnalysisChart({
         }
       });
     }
+
     return [forecasts, errors];
   })();
   
-  const getLegendData = (lines, errea) => {
-    const data = lines.map((line) => {
-      const style = line.props.style || line.props.theme.line.style;
-      return {
-        name: line.props.name,
-        symbol: {
-          opacity: getNamesOfCharted().includes(line.props.name) ? style.data.opacity : 0.10,
-          fill: style.data.stroke,
-          cursor: 'pointer',
-        },
-        labels: {
-          opacity: getNamesOfCharted().includes(line.props.name) ? 1 : 0.20,
-          cursor: 'pointer',
-        }
-      }
-    });
-
-    if (!errea) {
-      data.push({
-        name: 'Error',
-        symbol: {
-          opacity: 0.10,
-          fill: 'magenta',
-          cursor: 'pointer',
-          type: 'square',
-        },
-        labels: {
-          opacity: 0.20,
-          cursor: 'pointer',
-        }
-      });
-    } else {
-      const style = errea.props.style
-      data.push({
-        name: 'Error',
-        symbol: {
-          opacity: style.data.opacity,
-          fill: style.data.stroke,
-          cursor: 'pointer',
-          type: 'square',
-        },
-        labels: {
-          cursor: 'pointer',
-        }
-      });
-    }
-    return data;
-  };
-
-  const obsLine = <VictoryLine name={'Actual'} data={obsData} key='obs' />;
-  const fcastLines = {};
-  for (const leadDays in fcastData) {
-    const name = `${leadDays}-Day`;
-    fcastLines[name] = (
-      <VictoryLine
-        name={name}
-        data={fcastData[leadDays]}
-        style={{
-          data: {
-            opacity: leadDays > 1 ? (9 - leadDays)/10 : 1.0,
-            stroke: 'red'
-          }
-        }}
-        key={leadDays}
-      />  
-    );
-  }
-  const allLines = [...Object.values(fcastLines), obsLine];
-
-  const makeErrea = (leadDays, areas) => (
-    <VictoryGroup
-      name='Error'
-      style={{
-        data: {
-          opacity: (leadDays > 1 ? (9 - leadDays)/10 : 1.0) * 0.4,
-          fill: 'magenta',
-          stroke: 'magenta'
-        }
-      }}
-    >
-    {areas}
-    </VictoryGroup>
-  );
-
-  const erreas = {};
-  for (const leadDays in errorData) {
-    erreas[`${leadDays}-Day`] = (
-      <VictoryGroup
-        name='Error'
-        style={{
-          data: {
-            opacity: (leadDays > 1 ? (9 - leadDays)/10 : 1.0) * 0.4,
-            fill: 'magenta',
-            stroke: 'magenta'
-          }
-        }}
-      >
-        {errorData[leadDays].map((errea, i) => (
-              <VictoryArea
-                data={errea}
-                key={`Area-${i}`}
-            />
-        ))}
-      </VictoryGroup>
-    );
-  }
-  
-  /* eslint-disable react-hooks/rules-of-hooks */
-  let [activeData, setActiveData] = useState([]);
-  let [displayedErrea, setDisplayedErrea] = useState(null);
-  let [displayedLines, setDisplayedLines] = useState(allLines);
-  /* eslint-enable react-hooks/rules-of-hooks */
-
-  const getNamesOfCharted = () => displayedLines.map((line) => line.props.name);
-
-  const toggleDisplayed = (labelName) => {
-    if (
-      labelName in fcastLines
-      && (
-        !getNamesOfCharted().includes(labelName)
-        || (displayedLines.length > 2 && labelName !== 'Actual')
-      )
-    ) {
-      setDisplayedLines([fcastLines[labelName], obsLine]);
-      setDisplayedErrea(erreas[labelName]);
-    } else if (displayedLines.length < allLines.length) {
-      setDisplayedLines(allLines);
-      setDisplayedErrea(null)
-    }
-    setActiveData([]);
-  }
-
-  return (
-    <Container>
-      <Row>
-        <VictoryChart scale={{ x: "time" }} domainPadding={{ y: 20 }}
-          padding={{ top: 50, bottom: 50, left: 50, right: 75 }}
-          containerComponent={
-            displayedLines.length > 2
-              ? <VictoryContainer />
-              : <VictoryVoronoiContainer
-                voronoiDimension='x'
-                labels={() => null}
-                labelComponent={<Cursor />}
-                onActivated={(points) => { setActiveData(points); }}
-              />
-          }
-        >
-          <VictoryLabel x={200} y={15} textAnchor='middle'
-            text={weather.displayName}
-          />
-          <VictoryLegend x={25} y={25}
-            orientation='horizontal'
-            borderPadding={{ top: 0, bottom: 0, left: 5, right: 0 }}
-            gutter={10}
-            symbolSpacer={5}
-            style={{ labels: { fontSize: 9 } }}
-            data={ getLegendData(allLines, displayedErrea) }
-            toggleDisplayed={toggleDisplayed}
-            events={[{
-                eventHandlers: {
-                  onClick: (evt, target, i, legend) => {
-                    if (target && target.datum) {
-                      legend.props.toggleDisplayed(target.datum.name);
-                    }
-                  }
-                }
-            }]}
-          />
-          
-          <VictoryAxis
-            tickCount={6}
-            tickFormat={(dateTime) => {
-              const date = `${dateTime.getMonth() + 1}/${dateTime.getDate()}`;
-              let time = dateTime.toLocaleTimeString().split(/[:\s]/);
-              return dateTime.getHours() ? `${time[0]} ${time.slice(-1)}` : date;
-            }}
-            style={{
-              ticks: { stroke: "black", size: 5 },
-              tickLabels: { fontSize: 12 },
-              grid: { stroke: 'grey' },
-            }}
-            offsetY={50}
-          />
-          <VictoryAxis
-            dependentAxis
-            crossAxis={false}
-            style={{
-              grid: { stroke: 'grey' },
-              tickLabels: { fontSize: 12 },
-            }}
-            label='°C'
-            axisLabelComponent={<VictoryLabel dx={-15} angle={0} />}
-          />
-          {displayedErrea}
-          {displayedLines}
-            
-        </VictoryChart>
-      </Row>
-      <Row>
-        <ActiveDataDisplay displayName={weather.displayName} data={activeData} />
-      </Row>
-    </Container>
-  );
-}
-
-function AnalysisPage() {
-  let [analysis, setAnalysis] = useState(null);
-  let [resultsMessage, setResultsMessage] = useState('Select date range.');
-  
-  return (
-    <Container>
-      <Row>
-        <DateRangeForm
-          onFetch={(request) => {
-            setResultsMessage('Retrieving...');
-            setAnalysis(null);
-            request.then((resp) => resp.json())
-              .then((json) => { setAnalysis(json); })
-              .catch((error) => setResultsMessage(error.message));
-          }}
-        />
-      </Row>
-      <Row>
-        {
-          analysis
-            ? <AnalysisChart analysis={analysis} />
-            : resultsMessage
-        }
-      </Row>
-    </Container>
-  );
+  return { obsData, fcastData, errorData, stats: json.errors };
 }
 
 export default AnalysisPage;
