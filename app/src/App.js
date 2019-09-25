@@ -161,8 +161,9 @@ function AnalysisChart({
     >
       {analysis.errorData[activeLeadDays[0][0]].map((errea, i) => (
             <VictoryArea
+              name={`Error-Area-${i}`}
               data={errea}
-              key={`Area-${i}`}
+              key={`Error-Area-${i}`}
           />
       ))}
     </VictoryGroup>
@@ -248,23 +249,7 @@ function AnalysisChart({
                 voronoiDimension='x'
                 labels={() => null}
                 labelComponent={<Cursor />}
-                onActivated={(points) => {
-                  // Handle bug where point is sent multiple times
-                  const eventKeys = Array.from(new Set(points.map((point) => point.eventKey)));
-                  let realEvent = eventKeys.reduce(
-                    (max, key) => {
-                      const count = points.filter((point) => point.eventKey === key).length;
-                      if (count > max.count) {
-                        return { count, key };
-                      }
-                      return max;
-                    },
-                    { count: 0 }
-                  );
-                  if (realEvent.key !== undefined) {
-                    setActiveData(points.filter((point) => point.eventKey === realEvent.key));
-                  }
-                }}
+                onActivated={(points) => { setActiveData(points); }}
               />
           }
         >
@@ -277,7 +262,7 @@ function AnalysisChart({
             gutter={10}
             symbolSpacer={5}
             style={{ labels: { fontSize: 9 } }}
-            data={ getLegendData(forecastLines) }
+            data={ getLegendData() }
             toggleDisplayed={toggleDisplayed}
             events={[{
                 eventHandlers: {
