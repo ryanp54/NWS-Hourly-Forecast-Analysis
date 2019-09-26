@@ -110,15 +110,15 @@ function AnalysisChart({
   analysis,
   weather = { propName: 'temperature', displayName: 'Temperature', errorThreshold: 1.67 }
 }) {
-  let [activeData, setActiveData] = useState([]);
+  const [activeData, setActiveData] = useState([]);
  
   const allLeadDays = Object.keys(analysis.fcastData).map((key) => `${key}-Day`);
   // Is this an anti-pattern?
-  let [activeLeadDays, setActiveLeadDays] = useState(allLeadDays);
+  const [activeLeadDays, setActiveLeadDays] = useState(allLeadDays);
 
   const forecastLines = Object.keys(analysis.fcastData).map((leadDay) => (
       <VictoryLine
-        name={`${leadDay}-Day`}
+        displayName={`${leadDay}-Day`}
         data={analysis.fcastData[leadDay]}
         style={{
           data: {
@@ -131,100 +131,101 @@ function AnalysisChart({
     )
   );
 
-  const displayedLines = activeLeadDays.map((leadDay) => (
-      <VictoryLine
-        name={leadDay}
-        data={analysis.fcastData[leadDay[0]]}
-        style={{
-          data: {
-            opacity: leadDay[0] > 1 ? (9 - leadDay[0])/10 : 1.0,
-            stroke: 'rgb(256, 0, 0)'
-          }
-        }}
-        key={leadDay}
-      />
-    )
+  const displayedFcastLines = (
+    <VictoryGroup displayName='Forecast' color='red'>
+      {
+        activeLeadDays.map((leadDay, i) => (
+          <VictoryLine
+            displayName={leadDay}
+            name={leadDay}
+            data={analysis.fcastData[leadDay[0]]}
+            style={{
+              data: {
+                opacity: i >= 1 ? (9 - i)/10 : 1.0,
+              }
+            }}
+            key={leadDay}
+          />
+        ))
+      }
+    </VictoryGroup>
   );
 
-  const observedLine = <VictoryLine name={'Actual'} data={analysis.obsData} key='obs' />;
 
-  const displayedErrea = activeLeadDays.length === 1 && (
+  const observedLine = (
+    <VictoryGroup displayName='Actual' color='black'>
+      <VictoryLine displayName='Actual' name='Actual' data={analysis.obsData} />
+    </VictoryGroup>
+  );
+
+  const displayedErrea = (
     <VictoryGroup
-      name='Error'
+      displayName='Error'
       style={{
         data: {
           opacity: (activeLeadDays[0][0] > 1 ? (9 - activeLeadDays[0][0])/10 : 1.0) * 0.4,
           fill: 'magenta',
           stroke: 'magenta'
-        }
+        },
+        symbol: { type: 'square'},
       }}
     >
-      {analysis.errorData[activeLeadDays[0][0]].map((errea, i) => (
-            <VictoryArea
-              name={`Error-Area-${i}`}
-              data={errea}
-              key={`Error-Area-${i}`}
-          />
-      ))}
+      {activeLeadDays.length === 1
+        ? analysis.errorData[activeLeadDays[0][0]].map((errea, i) => (
+              <VictoryArea
+                displayName={`Error-Area-${i}`}
+                name={`Error-Area-${i}`}
+                data={errea}
+                key={`Error-Area-${i}`}
+            />
+          ))
+        : []
+      }
     </VictoryGroup>
   );
-
-  const getLegendData = () => {
-    const allDisplayedLines = [...activeLeadDays, observedLine.props.name];
-    const data = [...forecastLines, observedLine].map((line) => {
-      const style = line.props.style || line.props.theme.line.style;
+  
+  const legendData = [
+      ...allLeadDays.map((day) => {
+        const line = displayedFcastLines.props.children.find((child) => child.props.name === day)
+          || displayedFcastLines;
+        const style = Object.assign({}, line.props.theme.line.style, line.props.style);
+        return {
+          name: day,
+          symbol: {
+            opacity: activeLeadDays.includes(day) ? style.data.opacity : 0.1,
+            fill: displayedFcastLines.props.color,
+            cursor: 'pointer',
+          },
+          labels: {
+            opacity: activeLeadDays.includes(day) ? 1 : 0.2,
+            cursor: 'pointer',
+          }
+        };
+    }),
+    ...[observedLine, displayedErrea].map((group) => {
+      const style = Object.assign({}, group.props.theme.line.style, group.props.style);
+      const opacity = group.props.children.length !== 0 ? 1 : 0.2;
+      debugger
       return {
-        name: line.props.name,
+        name: group.props.displayName,
         symbol: {
-          opacity: allDisplayedLines.includes(line.props.name)
-            ? style.data.opacity
-            : 0.10,
+          opacity,
           fill: style.data.stroke,
           cursor: 'pointer',
+          type: style.symbol && style.symbol.type ? style.symbol.type : 'circle',
         },
         labels: {
-          opacity: allDisplayedLines.includes(line.props.name) ? 1 : 0.20,
+          opacity,
           cursor: 'pointer',
         }
       }
-    });
-
-    if (!displayedErrea) {
-      data.push({
-        name: 'Error',
-        symbol: {
-          opacity: 0.10,
-          fill: 'magenta',
-          cursor: 'pointer',
-          type: 'square',
-        },
-        labels: {
-          opacity: 0.20,
-          cursor: 'pointer',
-        }
-      });
-    } else {
-      const style = displayedErrea.props.style
-      data.push({
-        name: 'Error',
-        symbol: {
-          opacity: style.data.opacity,
-          fill: style.data.stroke,
-          cursor: 'pointer',
-          type: 'square',
-        },
-        labels: {
-          cursor: 'pointer',
-        }
-      });
-    }
-    return data;
-  };
-
+    }).filter(Boolean)
+  ];
+  
   const toggleDisplayed = (labelName) => {
     const leadDay = labelName;
     if (allLeadDays.length === activeLeadDays.length) {
-      if (labelName === 'Error') {
+      if (labelName.includes('Error')) {
         setActiveLeadDays([allLeadDays[0]]);
       } else if (allLeadDays.includes(leadDay)) {
         setActiveLeadDays([leadDay]);
@@ -262,7 +263,7 @@ function AnalysisChart({
             gutter={10}
             symbolSpacer={5}
             style={{ labels: { fontSize: 9 } }}
-            data={ getLegendData() }
+            data={ legendData }
             toggleDisplayed={toggleDisplayed}
             events={[{
                 eventHandlers: {
@@ -301,7 +302,7 @@ function AnalysisChart({
           />
 
           {displayedErrea}
-          {displayedLines}
+          {displayedFcastLines}
           {observedLine}
             
         </VictoryChart>
