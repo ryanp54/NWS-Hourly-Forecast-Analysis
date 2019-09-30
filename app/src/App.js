@@ -151,11 +151,11 @@ const AnalysisChart = React.memo(function ({ analysis, onCursorChange, weather }
       displayName='Error'
       style={{
         data: {
-          opacity: (activeLeadDays[0][0] > 1 ? (9 - activeLeadDays[0][0])/10 : 1.0) * 0.4,
+          opacity: 0.4,
           fill: 'magenta',
           stroke: 'magenta'
         },
-        symbol: { type: 'square'},
+        legendSymbol: { type: 'square'},
       }}
     >
       {activeLeadDays.length === 1
@@ -192,17 +192,17 @@ const AnalysisChart = React.memo(function ({ analysis, onCursorChange, weather }
     }),
     ...[observedLine, displayedErrea].map((group) => {
       const style = Object.assign({}, group.props.theme.line.style, group.props.style);
-      const opacity = group.props.children.length !== 0 ? 1 : 0.2;
+      const isCharted = group.props.children.length !== 0;
       return {
         name: group.props.displayName,
         symbol: {
-          opacity,
+          opacity: isCharted ? style.data.opacity : 0.2,
           fill: style.data.stroke,
           cursor: 'pointer',
-          type: style.symbol && style.symbol.type ? style.symbol.type : 'circle',
+          type: style.legendSymbol && style.legendSymbol.type ? style.legendSymbol.type : 'circle',
         },
         labels: {
-          opacity,
+          opacity: isCharted ? 1 : 0.2,
           cursor: 'pointer',
         }
       }
