@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { Container, Row, Col, Button } from 'react-bootstrap';
 import './App.css';
 
@@ -74,13 +74,6 @@ function DateRangeForm({onFetch}) {
     onFetch(fetch(`${API_URL}start=${getISODate(start)}&end=${getISODate(end)}`))
   );
 
-  useEffect(() => onFetch(Promise.resolve(
-    new Response(
-      testData,
-      { "status": 200, headers: { "Content-Type": "application/json" } }
-    ))
-  ), []);
-
   return (
     <Container>
       <Row className='align-items-end justify-content-center'>
@@ -106,12 +99,7 @@ function DateRangeForm({onFetch}) {
   );
 }
 
-function AnalysisChart({
-  analysis,
-  weather = { propName: 'temperature', displayName: 'Temperature', errorThreshold: 1.67 }
-}) {
-  const [activeData, setActiveData] = useState([]);
- 
+const AnalysisChart = React.memo(function ({ analysis, onCursorChange, weather }) {
   const allLeadDays = Object.keys(analysis.fcastData).map((key) => `${key}-Day`);
   // Is this an anti-pattern?
   const [activeLeadDays, setActiveLeadDays] = useState(allLeadDays);
@@ -205,7 +193,6 @@ function AnalysisChart({
     ...[observedLine, displayedErrea].map((group) => {
       const style = Object.assign({}, group.props.theme.line.style, group.props.style);
       const opacity = group.props.children.length !== 0 ? 1 : 0.2;
-      debugger
       return {
         name: group.props.displayName,
         symbol: {
@@ -235,7 +222,7 @@ function AnalysisChart({
     } else if (allLeadDays.includes(leadDay)) {
       setActiveLeadDays([leadDay]);
     }
-    setActiveData([]);
+    onCursorChange([]);
   }
 
   return (
@@ -250,7 +237,7 @@ function AnalysisChart({
                 voronoiDimension='x'
                 labels={() => null}
                 labelComponent={<Cursor />}
-                onActivated={(points) => { setActiveData(points); }}
+                onActivated={onCursorChange}
               />
           }
         >
@@ -307,12 +294,9 @@ function AnalysisChart({
             
         </VictoryChart>
       </Row>
-      <Row>
-        <ActiveDataDisplay displayName={weather.displayName} data={activeData} />
-      </Row>
     </Container>
   );
-}
+});
 
 function Cursor({ x, scale }) {
   const range = scale.y.range();
@@ -404,9 +388,15 @@ function LabeledValue(props) {
 /* * * Main App * * */
 
 function AnalysisPage() {
-  let [analysis, setAnalysis] = useState(null);
-  let [resultsMessage, setResultsMessage] = useState('Select date range.');
+  const weather = useMemo(() => (
+    { propName: 'temperature', displayName: 'Temperature', errorThreshold: 1.67 }
+  ), []);
+  const [analysis, setAnalysis] = useState(formatDataForChart(JSON.parse(testData), weather));
+  const [resultsMessage, setResultsMessage] = useState('Select date range.');
+  const [activeData, setActiveData] = useState([]);
   
+  const handleActiveData = useCallback((data) => { setActiveData(data); }, []);
+
   return (
     <Container>
       <Row>
@@ -415,7 +405,7 @@ function AnalysisPage() {
             setResultsMessage('Retrieving...');
             setAnalysis(null);
             request.then((resp) => resp.json())
-              .then((json) => { setAnalysis(formatDataForChart(json)); })
+              .then((json) => { setAnalysis(formatDataForChart(json, weather)); })
               .catch((error) => setResultsMessage(error.message));
           }}
         />
@@ -423,16 +413,18 @@ function AnalysisPage() {
       <Row>
         {
           analysis
-            ? <AnalysisChart analysis={analysis} />
+            ? <AnalysisChart analysis={analysis} weather={weather} onCursorChange={handleActiveData} />
             : resultsMessage
         }
+      </Row>
+      <Row>
+        <ActiveDataDisplay displayName={weather.displayName} data={activeData} />
       </Row>
     </Container>
   );
 }
 
-function formatDataForChart(json) {
-  const weather = { propName: 'temperature', displayName: 'Temperature', errorThreshold: 1.67 };
+function formatDataForChart(json, weather) {
   const obsData = json.obs.reduce((data, ob) => {
     if (ob.observed_weather[weather.propName]) {
       data.push({
