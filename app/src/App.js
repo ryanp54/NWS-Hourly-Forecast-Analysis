@@ -1,6 +1,10 @@
-import React, { useState, useEffect, useCallback, useMemo } from 'react';
-import { Container, Row, Col, Button } from 'react-bootstrap';
-import './App.css';
+import React, {
+  useState, useCallback, useMemo,
+} from 'react';
+
+import {
+  Container, Row, Col, Button,
+} from 'react-bootstrap';
 
 import {
   VictoryChart,
@@ -17,24 +21,26 @@ import {
 import DayPickerInput from 'react-day-picker/DayPickerInput';
 import 'react-day-picker/lib/style.css';
 
-import { getDaysAgo, getISODate, parseToUTC } from './dateUtilities.js';
-import { testData } from './testData.js';
+import './App.css';
 
-const API_URL = '_self' in React.createElement('div') ?
-  'https://weather2019.appspot.com/OAX/forecasts/analyze?' :
-  '/OAX/forecasts/analyze?';
+import { getDaysAgo, getISODate, parseToUTC } from './dateUtilities';
+import { testData } from './testData';
+
+const API_URL = '_self' in React.createElement('div')
+  ? 'https://weather2019.appspot.com/OAX/forecasts/analyze?'
+  : '/OAX/forecasts/analyze?';
 
 function ForecastDayPicker(props) {
-  let [warned, setWarned] = useState(false);
+  const [warned, setWarned] = useState(false);
 
   return (
-    <Col md={'auto'}>
+    <Col md='auto'>
       <Row>
         <Col>
           <label>
-            {props.label + ':'}
+            {`${props.label}:`}
           </label>
-          <span className={'advisory float-right text-danger'}>
+          <span className='advisory float-right text-danger'>
             {` ${warned ? 'Check date.' : ''}`}
           </span>
         </Col>
@@ -57,7 +63,7 @@ function ForecastDayPicker(props) {
               disabledDays: {
                 before: new Date(2019, 1, 1),
                 after: getDaysAgo(2),
-              }
+              },
             }}
           />
         </Col>
@@ -66,9 +72,9 @@ function ForecastDayPicker(props) {
   );
 }
 
-function DateRangeForm({onFetch}) {
-  let [start, setStart] = useState(getDaysAgo(10));  
-  let [end, setEnd] = useState(getDaysAgo(3));
+function DateRangeForm({ onFetch }) {
+  const [start, setStart] = useState(getDaysAgo(10));
+  const [end, setEnd] = useState(getDaysAgo(3));
 
   const fetchReturn = () => (
     onFetch(fetch(`${API_URL}start=${getISODate(start)}&end=${getISODate(end)}`))
@@ -78,12 +84,12 @@ function DateRangeForm({onFetch}) {
     <Container>
       <Row className='align-items-end justify-content-center'>
         <ForecastDayPicker
-          label={'Start'}
+          label='Start'
           value={start}
           onChange={setStart}
         />
         <ForecastDayPicker
-          label={'End'}
+          label='End'
           value={end}
           onChange={setEnd}
         />
@@ -99,25 +105,10 @@ function DateRangeForm({onFetch}) {
   );
 }
 
-const AnalysisChart = React.memo(function ({ analysis, onCursorChange, weather }) {
+const AnalysisChart = ({ analysis, onCursorChange, weather }) => {
   const allLeadDays = Object.keys(analysis.fcastData).map((key) => `${key}-Day`);
   // Is this an anti-pattern?
   const [activeLeadDays, setActiveLeadDays] = useState(allLeadDays);
-
-  const forecastLines = Object.keys(analysis.fcastData).map((leadDay) => (
-      <VictoryLine
-        displayName={`${leadDay}-Day`}
-        data={analysis.fcastData[leadDay]}
-        style={{
-          data: {
-            opacity: leadDay > 1 ? (9 - leadDay)/10 : 1.0,
-            stroke: 'rgb(256, 0, 0)'
-          }
-        }}
-        key={leadDay}
-      />  
-    )
-  );
 
   const displayedFcastLines = (
     <VictoryGroup displayName='Forecast' color='red'>
@@ -129,8 +120,8 @@ const AnalysisChart = React.memo(function ({ analysis, onCursorChange, weather }
             data={analysis.fcastData[leadDay[0]]}
             style={{
               data: {
-                opacity: i >= 1 ? (9 - i)/10 : 1.0,
-              }
+                opacity: i >= 1 ? (9 - i) / 10 : 1.0,
+              },
             }}
             key={leadDay}
           />
@@ -153,9 +144,9 @@ const AnalysisChart = React.memo(function ({ analysis, onCursorChange, weather }
         data: {
           opacity: 0.4,
           fill: 'magenta',
-          stroke: 'magenta'
+          stroke: 'magenta',
         },
-        legendSymbol: { type: 'square'},
+        legendSymbol: { type: 'square' },
       }}
     >
       {activeLeadDays.length === 1
@@ -166,32 +157,32 @@ const AnalysisChart = React.memo(function ({ analysis, onCursorChange, weather }
                 data={errea}
                 key={`Error-Area-${i}`}
             />
-          ))
+        ))
         : []
       }
     </VictoryGroup>
   );
-  
+
   const legendData = [
-      ...allLeadDays.map((day) => {
-        const line = displayedFcastLines.props.children.find((child) => child.props.name === day)
+    ...allLeadDays.map((day) => {
+      const line = displayedFcastLines.props.children.find((child) => child.props.name === day)
           || displayedFcastLines;
-        const style = Object.assign({}, line.props.theme.line.style, line.props.style);
-        return {
-          name: day,
-          symbol: {
-            opacity: activeLeadDays.includes(day) ? style.data.opacity : 0.1,
-            fill: displayedFcastLines.props.color,
-            cursor: 'pointer',
-          },
-          labels: {
-            opacity: activeLeadDays.includes(day) ? 1 : 0.2,
-            cursor: 'pointer',
-          }
-        };
+      const style = { ...line.props.theme.line.style, ...line.props.style };
+      return {
+        name: day,
+        symbol: {
+          opacity: activeLeadDays.includes(day) ? style.data.opacity : 0.1,
+          fill: displayedFcastLines.props.color,
+          cursor: 'pointer',
+        },
+        labels: {
+          opacity: activeLeadDays.includes(day) ? 1 : 0.2,
+          cursor: 'pointer',
+        },
+      };
     }),
     ...[observedLine, displayedErrea].map((group) => {
-      const style = Object.assign({}, group.props.theme.line.style, group.props.style);
+      const style = { ...group.props.theme.line.style, ...group.props.style };
       const isCharted = group.props.children.length !== 0;
       return {
         name: group.props.displayName,
@@ -204,11 +195,11 @@ const AnalysisChart = React.memo(function ({ analysis, onCursorChange, weather }
         labels: {
           opacity: isCharted ? 1 : 0.2,
           cursor: 'pointer',
-        }
-      }
-    }).filter(Boolean)
+        },
+      };
+    }).filter(Boolean),
   ];
-  
+
   const toggleDisplayed = (labelName) => {
     const leadDay = labelName;
     if (allLeadDays.length === activeLeadDays.length) {
@@ -223,13 +214,15 @@ const AnalysisChart = React.memo(function ({ analysis, onCursorChange, weather }
       setActiveLeadDays([leadDay]);
     }
     onCursorChange([]);
-  }
+  };
 
   return (
     <Container>
       <Row>
-        <VictoryChart scale={{ x: "time" }} domainPadding={{ y: 20 }}
-          padding={{ top: 50, bottom: 50, left: 50, right: 75 }}
+        <VictoryChart scale={{ x: 'time' }} domainPadding={{ y: 20 }}
+          padding={{
+            top: 50, bottom: 50, left: 50, right: 75,
+          }}
           containerComponent={
             activeLeadDays.length > 1
               ? <VictoryContainer />
@@ -246,32 +239,34 @@ const AnalysisChart = React.memo(function ({ analysis, onCursorChange, weather }
           />
           <VictoryLegend x={25} y={25}
             orientation='horizontal'
-            borderPadding={{ top: 0, bottom: 0, left: 5, right: 0 }}
+            borderPadding={{
+              top: 0, bottom: 0, left: 5, right: 0,
+            }}
             gutter={10}
             symbolSpacer={5}
             style={{ labels: { fontSize: 9 } }}
             data={ legendData }
             toggleDisplayed={toggleDisplayed}
             events={[{
-                eventHandlers: {
-                  onClick: (evt, target, i, legend) => {
-                    if (target && target.datum) {
-                      legend.props.toggleDisplayed(target.datum.name);
-                    }
+              eventHandlers: {
+                onClick: (evt, target, i, legend) => {
+                  if (target && target.datum) {
+                    legend.props.toggleDisplayed(target.datum.name);
                   }
-                }
+                },
+              },
             }]}
           />
-          
+
           <VictoryAxis
             tickCount={6}
             tickFormat={(dateTime) => {
               const date = `${dateTime.getMonth() + 1}/${dateTime.getDate()}`;
-              let time = dateTime.toLocaleTimeString().split(/[:\s]/);
+              const time = dateTime.toLocaleTimeString().split(/[:\s]/);
               return dateTime.getHours() ? `${time[0]} ${time.slice(-1)}` : date;
             }}
             style={{
-              ticks: { stroke: "black", size: 5 },
+              ticks: { stroke: 'black', size: 5 },
               tickLabels: { fontSize: 12 },
               grid: { stroke: 'grey' },
             }}
@@ -291,20 +286,20 @@ const AnalysisChart = React.memo(function ({ analysis, onCursorChange, weather }
           {displayedErrea}
           {displayedFcastLines}
           {observedLine}
-            
+
         </VictoryChart>
       </Row>
     </Container>
   );
-});
+};
 
 function Cursor({ x, scale }) {
   const range = scale.y.range();
   return (
     <line
       style={{
-        stroke: "lightgrey",
-        strokeWidth: 1
+        stroke: 'lightgrey',
+        strokeWidth: 1,
       }}
       x1={x}
       x2={x}
@@ -313,6 +308,8 @@ function Cursor({ x, scale }) {
     />
   );
 }
+
+const MemodAnalysisChart = React.memo(AnalysisChart);
 
 /* * * Active Data Display * * */
 
@@ -324,10 +321,15 @@ function ActiveDataDisplay({ displayName, data }) {
   let formattedErrorDatum;
   data.forEach((datum) => {
     if (!datum.childName.includes('Error')) {
-      formattedData.push(<LabeledValue label={datum.childName} value={datum.y} key={datum.childName} />);
-    } else {
-      formattedErrorDatum = 
+      formattedData.push(
         <LabeledValue
+          label={datum.childName}
+          value={datum.y}
+          key={datum.childName}
+        />,
+      );
+    } else {
+      formattedErrorDatum = <LabeledValue
           label='Forecast Error'
           value={datum.amount}
           key='Forecast Error'
@@ -340,8 +342,7 @@ function ActiveDataDisplay({ displayName, data }) {
     const fcasts = data.filter((point) => point.childName !== 'Actual');
     const obs = data.filter((point) => point.childName === 'Actual');
     if (fcasts.length === 1 && obs.length === 1) {
-      formattedErrorDatum =
-        <LabeledValue
+      formattedErrorDatum = <LabeledValue
           label='Forecast Error'
           value={fcasts[0].y - obs[0].y}
           key='Forecast Error'
@@ -357,7 +358,7 @@ function ActiveDataDisplay({ displayName, data }) {
     <Container>
       <Row>
         <h5 className='font-weight-normal'>
-           {`${data[0].x.toLocaleString({dateStyle: 'short', timeStyle: 'short'})}`}
+           {`${data[0].x.toLocaleString({ dateStyle: 'short', timeStyle: 'short' })}`}
          </h5>
       </Row>
       <Row>
@@ -394,7 +395,7 @@ function AnalysisPage() {
   const [analysis, setAnalysis] = useState(formatDataForChart(JSON.parse(testData), weather));
   const [resultsMessage, setResultsMessage] = useState('Select date range.');
   const [activeData, setActiveData] = useState([]);
-  
+
   const handleActiveData = useCallback((data) => { setActiveData(data); }, []);
 
   return (
@@ -413,7 +414,11 @@ function AnalysisPage() {
       <Row>
         {
           analysis
-            ? <AnalysisChart analysis={analysis} weather={weather} onCursorChange={handleActiveData} />
+            ? <MemodAnalysisChart
+                analysis={analysis}
+                weather={weather}
+                onCursorChange={handleActiveData}
+              />
             : resultsMessage
         }
       </Row>
@@ -434,11 +439,11 @@ function formatDataForChart(json, weather) {
     }
     return data;
   }, []);
-  
+
   const [fcastData, errorData] = (() => {
     const forecasts = {};
     const errors = {};
-    for (const day in json.fcasts) {
+    Object.keys(json.fcasts).forEach((day) => {
       forecasts[day] = [];
       errors[day] = [];
       json.fcasts[day].forEach((fcast) => {
@@ -455,7 +460,7 @@ function formatDataForChart(json, weather) {
             x: time,
             y: fcastValue,
             y0: obs[0].y,
-            amount: fcastValue - obs[0].y
+            amount: fcastValue - obs[0].y,
           };
           const lastErrea = errors[day].length > 0 ? errors[day][errors[day].length - 1] : false;
           if (
@@ -468,12 +473,14 @@ function formatDataForChart(json, weather) {
           }
         }
       });
-    }
+    });
 
     return [forecasts, errors];
   })();
-  
-  return { obsData, fcastData, errorData, stats: json.errors };
+
+  return {
+    obsData, fcastData, errorData, stats: json.errors,
+  };
 }
 
 export default AnalysisPage;
