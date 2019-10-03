@@ -375,7 +375,7 @@ function ActiveDataDisplay({ displayName, data }) {
 
 function LabeledValue(props) {
   return (
-    <span className={`mr-3 ${props.className}`}>
+    <span className={`mr-3 d-inline-block ${props.className}`}>
       <span>{props.label}: </span>
       <span className='font-weight-light ml-2'>
         {
