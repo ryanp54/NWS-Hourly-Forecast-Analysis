@@ -7,6 +7,8 @@ import {
 } from 'react-bootstrap';
 
 import {
+  Rect,
+  Text,
   VictoryChart,
   VictoryContainer,
   VictoryAxis,
@@ -34,13 +36,13 @@ function ForecastDayPicker(props) {
   const [warned, setWarned] = useState(false);
 
   return (
-    <Col md='auto'>
+    <Col md={'auto'} className='pb-3'>
       <Row>
         <Col>
           <label>
             {`${props.label}:`}
           </label>
-          <span className='advisory float-right text-danger'>
+          <span className={'advisory float-right text-danger'}>
             {` ${warned ? 'Check date.' : ''}`}
           </span>
         </Col>
@@ -81,19 +83,23 @@ function DateRangeForm({ onFetch }) {
   );
 
   return (
-    <Container>
-      <Row className='align-items-end justify-content-center'>
-        <ForecastDayPicker
-          label='Start'
-          value={start}
-          onChange={setStart}
-        />
-        <ForecastDayPicker
-          label='End'
-          value={end}
-          onChange={setEnd}
-        />
-        <Col md={2}>
+    <Container className='pb-3'>
+      <Row className='d-flex justify-content-center'>
+        <Col xs={'auto'}>
+          <ForecastDayPicker
+            label={'Start'}
+            value={start}
+            onChange={setStart}
+          />
+        </Col>
+        <Col xs={'auto'}>
+          <ForecastDayPicker
+            label={'End'}
+            value={end}
+            onChange={setEnd}
+          />
+        </Col>
+        <Col md={2} className='d-flex align-self-center justify-content-center mt-3'>
           <Button
             onClick={fetchReturn}
           >
@@ -105,15 +111,11 @@ function DateRangeForm({ onFetch }) {
   );
 }
 
-const AnalysisChart = ({ analysis, onCursorChange, weather }) => {
-  const allLeadDays = Object.keys(analysis.fcastData).map((key) => `${key}-Day`);
-  // Is this an anti-pattern?
-  const [activeLeadDays, setActiveLeadDays] = useState(allLeadDays);
-
+const ForecastChart = ({ analysis, weather, activeDays, onChange }) => {
   const displayedFcastLines = (
     <VictoryGroup displayName='Forecast' color='red'>
       {
-        activeLeadDays.map((leadDay, i) => (
+        activeDays.map((leadDay, i) => (
           <VictoryLine
             displayName={leadDay}
             name={leadDay}
@@ -149,8 +151,8 @@ const AnalysisChart = ({ analysis, onCursorChange, weather }) => {
         legendSymbol: { type: 'square' },
       }}
     >
-      {activeLeadDays.length === 1
-        ? analysis.errorData[activeLeadDays[0][0]].map((errea, i) => (
+      {activeDays.length === 1
+        ? analysis.errorData[activeDays[0][0]].map((errea, i) => (
               <VictoryArea
                 displayName={`Error-Area-${i}`}
                 name={`Error-Area-${i}`}
@@ -164,19 +166,19 @@ const AnalysisChart = ({ analysis, onCursorChange, weather }) => {
   );
 
   const legendData = [
-    ...allLeadDays.map((day) => {
+    ...analysis.allFcastDays.map((day) => {
       const line = displayedFcastLines.props.children.find((child) => child.props.name === day)
           || displayedFcastLines;
       const style = { ...line.props.theme.line.style, ...line.props.style };
       return {
         name: day,
         symbol: {
-          opacity: activeLeadDays.includes(day) ? style.data.opacity : 0.1,
+          opacity: activeDays.includes(day) ? style.data.opacity : 0.1,
           fill: displayedFcastLines.props.color,
           cursor: 'pointer',
         },
         labels: {
-          opacity: activeLeadDays.includes(day) ? 1 : 0.2,
+          opacity: activeDays.includes(day) ? 1 : 0.2,
           cursor: 'pointer',
         },
       };
@@ -202,42 +204,47 @@ const AnalysisChart = ({ analysis, onCursorChange, weather }) => {
 
   const toggleDisplayed = (labelName) => {
     const leadDay = labelName;
-    if (allLeadDays.length === activeLeadDays.length) {
+    let newActiveDays = false;
+    if (analysis.allFcastDays.length === activeDays.length) {
       if (labelName.includes('Error')) {
-        setActiveLeadDays([allLeadDays[0]]);
-      } else if (allLeadDays.includes(leadDay)) {
-        setActiveLeadDays([leadDay]);
+        newActiveDays = [analysis.allFcastDays[0]];
+      } else if (analysis.allFcastDays.includes(leadDay)) {
+        newActiveDays = [leadDay];
       }
-    } else if (labelName === 'Actual' || activeLeadDays.includes(leadDay)) {
-      setActiveLeadDays(allLeadDays);
-    } else if (allLeadDays.includes(leadDay)) {
-      setActiveLeadDays([leadDay]);
+    } else if (labelName === 'Actual' || activeDays.includes(leadDay)) {
+      newActiveDays = analysis.allFcastDays;
+    } else if (analysis.allFcastDays.includes(leadDay)) {
+      newActiveDays = [leadDay];
     }
-    onCursorChange([]);
+    onChange(newActiveDays, []);
   };
-
+  
   return (
-    <Container>
+    <Container className='pt-3'>
+      <Row>
+        <ErrorStatsDisplay
+          activeDay={activeDays[0]}
+          stats={analysis.stats}
+          weather={weather}
+        />
+      </Row>
       <Row>
         <VictoryChart scale={{ x: 'time' }} domainPadding={{ y: 20 }}
           padding={{
-            top: 50, bottom: 50, left: 50, right: 75,
+            top: 25, bottom: 50, left: 50, right: 75,
           }}
           containerComponent={
-            activeLeadDays.length > 1
+            activeDays.length > 1
               ? <VictoryContainer />
               : <VictoryVoronoiContainer
                 voronoiDimension='x'
                 labels={() => null}
                 labelComponent={<Cursor />}
-                onActivated={onCursorChange}
+                onActivated={(points) => onChange(false, points)}
               />
           }
         >
-          <VictoryLabel x={200} y={15} textAnchor='middle'
-            text={weather.displayName}
-          />
-          <VictoryLegend x={25} y={25}
+          <VictoryLegend x={25} y={10}
             orientation='horizontal'
             borderPadding={{
               top: 0, bottom: 0, left: 5, right: 0,
@@ -293,6 +300,45 @@ const AnalysisChart = ({ analysis, onCursorChange, weather }) => {
   );
 };
 
+function ErrorStatsDisplay({ stats, weather, activeDay }) {
+  const activeStats = stats[activeDay[0]][weather.propName];
+  return (
+    <Container>
+      <Row className='d-flex justify-content-center'>
+        <h5 className='font-weight-normal'>
+          {`${weather.displayName} Forecast Accuracy: ${activeDay}`}
+        </h5>
+      </Row>
+      <Row className='d-flex justify-content-center'>
+          {
+            Object.keys(activeStats).map((type) => (
+              Object.keys(activeStats[type]).map((prop) => {
+                if (type.includes(prop)) {
+                  return (
+                    <LabeledValue
+                     label={toTitleCase(type)}
+                     value={activeStats[type][prop]}
+                     key={prop}
+                   />
+                  );
+                }
+                return false;
+              })
+            )).flat().filter(Boolean)
+          }
+      </Row>
+    </Container>
+  );
+}
+
+// Clean up props that cause error messages.
+function CustomG({ children, ...rest }) {
+  rest.standalone = rest.standalone.toString();
+  delete rest.stringMap
+
+  return <g { ...rest }> {children} </g>;
+}
+
 function Cursor({ x, scale }) {
   const range = scale.y.range();
   return (
@@ -309,9 +355,60 @@ function Cursor({ x, scale }) {
   );
 }
 
-const MemodAnalysisChart = React.memo(AnalysisChart);
+const MemodForecastChart = React.memo(ForecastChart);
 
-/* * * Active Data Display * * */
+function AnalysisChart({ analysis, weather }) {
+  const [activeFcastDays, setActiveFcastDays] = useState(analysis.allFcastDays);
+  const [activeData, setActiveData] = useState([]);
+
+  const handleChange = useCallback(
+    (newActiveDays, newActiveData) => {
+      if (newActiveDays) {
+        setActiveFcastDays(newActiveDays);
+      }
+      if (newActiveData) {
+        setActiveData(newActiveData);
+      }
+    },
+    [],
+  );
+
+  return (
+    <Container>
+      <Row>
+        <MemodForecastChart
+          analysis={analysis}
+          weather={weather}
+          activeDays={activeFcastDays}
+          onChange={handleChange}
+        />
+      </Row>
+      <Row>
+        <ActiveDataDisplay
+          displayName={weather.displayName}
+          data={activeData}
+        />
+      </Row>
+    </Container>
+  );
+}
+
+function toTitleCase(str) {
+  return (
+    str.replace(
+      /_/,
+      ' ',
+    ).replace(
+      /(?:(^|\(|"|\s|-|,)\w)\w+/g,
+      (match) => (match === match.toUpperCase() ? match.toLowerCase() : match),
+    ).replace(
+      /(?:^|\(|"|\s|-|,)\w/g,
+      (match) => match.toUpperCase(),
+    )
+  );
+}
+
+/* * * Current Data Detail Display * * */
 
 function ActiveDataDisplay({ displayName, data }) {
   if (!data || data.length === 0) {
@@ -394,9 +491,6 @@ function AnalysisPage() {
   ), []);
   const [analysis, setAnalysis] = useState(formatDataForChart(JSON.parse(testData), weather));
   const [resultsMessage, setResultsMessage] = useState('Select date range.');
-  const [activeData, setActiveData] = useState([]);
-
-  const handleActiveData = useCallback((data) => { setActiveData(data); }, []);
 
   return (
     <Container>
@@ -414,16 +508,9 @@ function AnalysisPage() {
       <Row>
         {
           analysis
-            ? <MemodAnalysisChart
-                analysis={analysis}
-                weather={weather}
-                onCursorChange={handleActiveData}
-              />
+            ? <AnalysisChart analysis={analysis} weather={weather} />
             : resultsMessage
         }
-      </Row>
-      <Row>
-        <ActiveDataDisplay displayName={weather.displayName} data={activeData} />
       </Row>
     </Container>
   );
@@ -479,7 +566,11 @@ function formatDataForChart(json, weather) {
   })();
 
   return {
-    obsData, fcastData, errorData, stats: json.errors,
+    obsData,
+    fcastData,
+    errorData,
+    stats: json.errors,
+    allFcastDays: Object.keys(fcastData).map((key) => `${key}-Day`),
   };
 }
 
