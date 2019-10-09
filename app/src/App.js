@@ -32,7 +32,7 @@ const API_URL = '_self' in React.createElement('div')
   ? 'https://weather2019.appspot.com/OAX/forecasts/analyze?'
   : '/OAX/forecasts/analyze?';
 
-function ForecastDayPicker(props) {
+function ForecastDayPicker({ label, onChange, ...rest }) {
   const [warned, setWarned] = useState(false);
 
   return (
@@ -40,7 +40,7 @@ function ForecastDayPicker(props) {
       <Row>
         <Col>
           <label>
-            {`${props.label}:`}
+            {`${label}:`}
           </label>
           <span className={'advisory float-right text-danger'}>
             {` ${warned ? 'Check date.' : ''}`}
@@ -50,7 +50,7 @@ function ForecastDayPicker(props) {
       <Row>
         <Col>
           <DayPickerInput
-            {...props}
+            {...rest}
             onDayChange={(day, mod) => {
               if (!day || (mod.disabled && !warned)) {
                 setWarned(true);
@@ -58,7 +58,7 @@ function ForecastDayPicker(props) {
                 if (warned) {
                   setWarned(false);
                 }
-                props.onChange(day);
+                onChange(day);
               }
             }}
             dayPickerProps={{
@@ -166,59 +166,62 @@ const ForecastChart = ({ analysis, weather, activeDays, onChange }) => {
   );
 
   const legendData = [
-    ...analysis.allFcastDays.map((day) => {
-      const line = displayedFcastLines.props.children.find((child) => child.props.name === day)
-          || displayedFcastLines;
-      const style = { ...line.props.theme.line.style, ...line.props.style };
-      return {
-        name: day,
-        symbol: {
-          opacity: activeDays.includes(day) ? style.data.opacity : 0.1,
-          fill: displayedFcastLines.props.color,
-          cursor: 'pointer',
-        },
-        labels: {
-          opacity: activeDays.includes(day) ? 1 : 0.2,
-          cursor: 'pointer',
-        },
-      };
-    }),
-    ...[observedLine, displayedErrea].map((group) => {
-      const style = { ...group.props.theme.line.style, ...group.props.style };
-      const isCharted = group.props.children.length !== 0;
-      return {
-        name: group.props.displayName,
-        symbol: {
-          opacity: isCharted ? style.data.opacity : 0.2,
-          fill: style.data.stroke,
-          cursor: 'pointer',
-          type: style.legendSymbol && style.legendSymbol.type ? style.legendSymbol.type : 'circle',
-        },
-        labels: {
-          opacity: isCharted ? 1 : 0.2,
-          cursor: 'pointer',
-        },
-      };
-    }).filter(Boolean),
+    ...analysis.allFcastDays.map(
+      (day) => {
+        const line = displayedFcastLines.props.children.find((child) => child.props.name === day)
+            || displayedFcastLines;
+        const style = { ...line.props.theme.line.style, ...line.props.style };
+        return {
+          name: day,
+          symbol: {
+            opacity: activeDays.includes(day) ? style.data.opacity : 0.1,
+            fill: displayedFcastLines.props.color,
+            cursor: 'pointer',
+          },
+          labels: {
+            opacity: activeDays.includes(day) ? 1 : 0.2,
+            cursor: 'pointer',
+          },
+        };
+      },
+    ),
+    ...[observedLine, displayedErrea].map(
+      (group) => {
+        const style = { ...group.props.theme.line.style, ...group.props.style };
+        const isCharted = group.props.children.length !== 0;
+        return {
+          name: group.props.displayName,
+          symbol: {
+            opacity: isCharted ? style.data.opacity : 0.2,
+            fill: style.data.stroke,
+            cursor: 'pointer',
+            type: style.legendSymbol && style.legendSymbol.type ? style.legendSymbol.type : 'circle',
+          },
+          labels: {
+            opacity: isCharted ? 1 : 0.2,
+            cursor: 'pointer',
+          },
+        };
+      },
+    ).filter(Boolean),
   ];
 
   const toggleDisplayed = (labelName) => {
-    const leadDay = labelName;
     let newActiveDays = false;
     if (analysis.allFcastDays.length === activeDays.length) {
       if (labelName.includes('Error')) {
         newActiveDays = [analysis.allFcastDays[0]];
-      } else if (analysis.allFcastDays.includes(leadDay)) {
-        newActiveDays = [leadDay];
+      } else if (analysis.allFcastDays.includes(labelName)) {
+        newActiveDays = [labelName];
       }
-    } else if (labelName === 'Actual' || activeDays.includes(leadDay)) {
+    } else if (labelName === 'Actual' || activeDays.includes(labelName)) {
       newActiveDays = analysis.allFcastDays;
-    } else if (analysis.allFcastDays.includes(leadDay)) {
-      newActiveDays = [leadDay];
+    } else if (analysis.allFcastDays.includes(labelName)) {
+      newActiveDays = [labelName];
     }
     onChange(newActiveDays, []);
   };
-  
+
   return (
     <Container className='pt-3'>
       <Row>
@@ -316,7 +319,7 @@ function ErrorStatsDisplay({ stats, weather, activeDay }) {
                 if (type.includes(prop)) {
                   return (
                     <LabeledValue
-                     label={toTitleCase(type)}
+                     label={type}
                      value={activeStats[type][prop]}
                      key={prop}
                    />
@@ -470,15 +473,24 @@ function ActiveDataDisplay({ displayName, data }) {
   );
 }
 
-function LabeledValue(props) {
+function LabeledValue({
+  label, value, type, className,
+}) {
+  const formatForDisplay = (val, units) => `${Math.round(val * 10) / 10}${units}`;
+  const valueType = (type || label).toLowerCase();
+
+  let formattedValue;
+  if (valueType === 'accuracy') {
+    formattedValue = formatForDisplay(value * 100.0, '%');
+  } else if (valueType.includes('bias')) {
+    formattedValue = formatForDisplay(value, '');
+  } else {
+    formattedValue = formatForDisplay(value, '°C');
+  }
   return (
-    <span className={`mr-3 d-inline-block ${props.className}`}>
-      <span>{props.label}: </span>
-      <span className='font-weight-light ml-2'>
-        {
-          `${Math.round(props.value * 10) / 10}`
-        }
-      </span>
+    <span className={`mr-3 d-inline-block ${className}`}>
+      <span> {toTitleCase(label)}: </span>
+      <span className='font-weight-light ml-2'> {formattedValue} </span>
     </span>
   );
 }
