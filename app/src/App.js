@@ -237,14 +237,12 @@ const ForecastChart = ({ analysis, weather, activeDays, onChange }) => {
             top: 25, bottom: 50, left: 50, right: 75,
           }}
           containerComponent={
-            activeDays.length > 1
-              ? <VictoryContainer />
-              : <VictoryVoronoiContainer
-                voronoiDimension='x'
-                labels={() => null}
-                labelComponent={<Cursor />}
-                onActivated={(points) => onChange(false, points)}
-              />
+            <VictoryVoronoiContainer
+              voronoiDimension='x'
+              labels={() => null}
+              labelComponent={<Cursor />}
+              onActivated={(points) => onChange(false, points)}
+            />
           }
         >
           <VictoryLegend x={25} y={10}
@@ -308,7 +306,7 @@ function ErrorStatsDisplay({ stats, weather, activeDay }) {
   return (
     <Container>
       <Row className='d-flex justify-content-center'>
-        <h5 className='font-weight-normal'>
+        <h5>
           {`${weather.displayName} Forecast Accuracy: ${activeDay}`}
         </h5>
       </Row>
@@ -337,7 +335,7 @@ function ErrorStatsDisplay({ stats, weather, activeDay }) {
 // Clean up props that cause error messages.
 function CustomG({ children, ...rest }) {
   rest.standalone = rest.standalone.toString();
-  delete rest.stringMap
+  delete rest.stringMap;
 
   return <g { ...rest }> {children} </g>;
 }
@@ -417,6 +415,10 @@ function ActiveDataDisplay({ displayName, data }) {
   if (!data || data.length === 0) {
     return '';
   }
+
+  const [date, time] = data[0].x.toLocaleString({ dateStyle: 'short', timeStyle: 'short' })
+    .split(',');
+
   const formattedData = [];
   let formattedErrorDatum;
   data.forEach((datum) => {
@@ -455,19 +457,14 @@ function ActiveDataDisplay({ displayName, data }) {
   }
 
   return (
-    <Container>
-      <Row>
-        <h5 className='font-weight-normal'>
-           {`${data[0].x.toLocaleString({ dateStyle: 'short', timeStyle: 'short' })}`}
-         </h5>
+    <Container className='h6 font-weight-normal'>
+      <Row className='d-flex justify-content-center pb-2 '>
+        <Col>
+           {`${displayName} on ${date} at ${time}`}
+         </Col>
       </Row>
-      <Row>
-        <Col xs={12} className='font-weight-bold'>
-          {displayName}
-        </Col>
-        <Col xs={12}>
-          {formattedData}
-        </Col>
+      <Row className='px-2'>
+        {formattedData}
       </Row>
     </Container>
   );
