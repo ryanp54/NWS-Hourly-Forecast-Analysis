@@ -2,6 +2,7 @@ __all__ = ['FcastAnalysis']
 
 import pdb
 import math
+import copy
 from datetime import datetime, timedelta
 
 from google.appengine.ext import ndb
@@ -94,7 +95,10 @@ class Accuracy(object):
     def __add__(self, addend):
         if isinstance(addend, Accuracy):
             n = self.n + addend.n
-            accuracy = (self.accuracy + addend.accuracy)/n
+            if n > 0:
+                accuracy = (self.accuracy + addend.accuracy)/n
+            else:
+                accuracy = self.accuracy
             return Accuracy(self.correct_range, accuracy, n)
         elif addend is not None:
             n = self.n + 1
@@ -109,6 +113,7 @@ class Accuracy(object):
     def __sub__(self, subtrahend):
         if isinstance(subtrahend, Accuracy):
             n = self.n + subtrahend.n
+            # TODO: Handle n=0
             accuracy = (self.accuracy + subtrahend.accuracy)/n
             return Accuracy(self.correct_range, accuracy, n)
         elif subtrahend is not None:
@@ -146,18 +151,34 @@ class SimpleError(object):
         return '{0.__dict__}'.format(self)
 
     def __add__(self, addend):
-        return SimpleError(
-            self.ave_error + addend,
-            self.bias + addend,
-            self.accuracy + addend
-        )
+        if isinstance(addend, SimpleError):
+            new_value = SimpleError(
+                self.ave_error + addend.ave_error,
+                self.bias + addend.bias,
+                self.accuracy + addend.accuracy
+            )
+        else:
+            new_value = SimpleError(
+                self.ave_error + addend,
+                self.bias + addend,
+                self.accuracy + addend
+            )
+        return new_value
 
     def __sub__(self, subtrahend):
-        return SimpleError(
-            self.ave_error - subtrahend,
-            self.bias - subtrahend,
-            self.accuracy - subtrahend
-        )
+        if isinstance(subtrahend, SimpleError):
+            new_value = SimpleError(
+                self.ave_error - subtrahend.ave_error,
+                self.bias - subtrahend.bias,
+                self.accuracy - subtrahend.accuracy
+            )
+        else:
+            new_value = SimpleError(
+                self.ave_error - subtrahend,
+                self.bias - subtrahend,
+                self.accuracy - subtrahend
+            )
+        return new_value
 
 
 class BinCount(object):
@@ -262,6 +283,16 @@ class FcastAnalysis(object):
                 self._get_simple_errors(ob, fcast)
                 self._get_wind_errors(ob, fcast)
                 self._analyze_precip_chance(ob, fcast)
+
+        cumulative = {}
+        for errors in self.errors.values():
+            for weather_type, error in errors.items():
+                if weather_type in cumulative and not 'precip' in weather_type:
+                    cumulative[weather_type] += error
+                else:
+                    cumulative[weather_type] = copy.deepcopy(error)
+
+        self.errors['all'] = cumulative
 
     def _get_simple_errors(self, ob, fcast):
         wx_error_fns = {
