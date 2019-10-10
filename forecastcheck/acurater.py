@@ -26,7 +26,7 @@ class AveError(object):
         if addend is not None:
             add_n = addend.n if isinstance(addend, AveError) else 1
             error = addend.error if isinstance(addend, AveError) else addend
-            total_abs_error = self.error*self.n + abs(error)
+            total_abs_error = self.error*self.n + abs(error)*add_n
             total_n = self.n + add_n
             return self if total_n == 0 else AveError(total_abs_error/total_n, total_n)
         else:
@@ -34,6 +34,7 @@ class AveError(object):
 
     def __sub__(self, subtrahend):
         if subtrahend is not None:
+            # TODO: Make work correctly
             sub_n = subtrahend.n if isinstance(subtrahend, AveError) else 1
             error = subtrahend.error if isinstance(subtrahend, AveError) else subtrahend
             total_abs_error = self.error*self.n - abs(error)
@@ -61,7 +62,7 @@ class Bias(object):
         if addend is not None:
             add_n = addend.n if isinstance(addend, Bias) else 1
             bias = addend.bias if isinstance(addend, Bias) else addend
-            total_bias = self.bias*self.n + bias
+            total_bias = self.bias*self.n + bias*add_n
             total_n = self.n + add_n
             return self if total_n == 0 else Bias(total_bias/total_n, total_n)
         else:
@@ -69,6 +70,7 @@ class Bias(object):
 
     def __sub__(self, subtrahend):
         if subtrahend is not None:
+            # TODO: Make work correctly
             isBias = isinstance(subtrahend, Bias)
             sub_n = subtrahend.n if isBias else 1
             bias = subtrahend.bias if isBias else subtrahend
@@ -81,8 +83,8 @@ class Bias(object):
 
 class Accuracy(object):
     """TODO: docstring for Accuracy"""
-    def __init__(self, correct_range=1, accuracy=0.0, n=0):
-        self.correct_range = correct_range
+    def __init__(self, error_threshold=1, accuracy=0.0, n=0):
+        self.error_threshold = error_threshold
         self.accuracy = accuracy
         self.n = n
 
@@ -96,33 +98,34 @@ class Accuracy(object):
         if isinstance(addend, Accuracy):
             n = self.n + addend.n
             if n > 0:
-                accuracy = (self.accuracy + addend.accuracy)/n
+                accuracy = (self.accuracy*self.n + addend.accuracy*addend.n)/n
             else:
                 accuracy = self.accuracy
-            return Accuracy(self.correct_range, accuracy, n)
+            return Accuracy(self.error_threshold, accuracy, n)
         elif addend is not None:
             n = self.n + 1
-            if abs(addend) < self.correct_range:
+            if abs(addend) < self.error_threshold:
                 accuracy = (self.accuracy*self.n + 1)/n
             else:
                 accuracy = self.accuracy*self.n/n
-            return Accuracy(self.correct_range, accuracy, n)
+            return Accuracy(self.error_threshold, accuracy, n)
         else:
             return self
 
     def __sub__(self, subtrahend):
         if isinstance(subtrahend, Accuracy):
+            # TODO: Correct to make work correctly
             n = self.n + subtrahend.n
             # TODO: Handle n=0
             accuracy = (self.accuracy + subtrahend.accuracy)/n
-            return Accuracy(self.correct_range, accuracy, n)
+            return Accuracy(self.error_threshold, accuracy, n)
         elif subtrahend is not None:
             n = self.n - 1
-            if abs(subtrahend) < self.correct_range:
+            if abs(subtrahend) < self.error_threshold:
                 accuracy = (self.accuracy*self.n - 1)/n
             else:
                 accuracy = self.accuracy*self.n/n
-            return Accuracy(self.correct_range, accuracy, n)
+            return Accuracy(self.error_threshold, accuracy, n)
         else:
             return self
 
@@ -134,11 +137,11 @@ class SimpleError(object):
         ave_error=None,
         bias=None,
         accuracy=None,
-        accuracy_range=1.0
+        error_threshold=1.0
     ):
         self.ave_error = ave_error or AveError()
         self.bias = bias or Bias()
-        self.accuracy = accuracy or Accuracy(accuracy_range)
+        self.accuracy = accuracy or Accuracy(error_threshold)
 
     def __str__(self):
         return (
@@ -256,12 +259,12 @@ class FcastAnalysis(object):
 
     def _init_errors(self):
         wx_simple_errors = {
-            'temperature': {'accuracy_range': 1.67},
-            'dewpoint': {'accuracy_range': 1.67},
-            'precip_6hr': {'accuracy_range': 2.54},
-            'cloud_cover': {'accuracy_range': 1},
-            'wind_dir': {'accuracy_range': 45},
-            'wind_speed': {'accuracy_range': 1.34}
+            'temperature': {'error_threshold': 1.67},
+            'dewpoint': {'error_threshold': 1.67},
+            'precip_6hr': {'error_threshold': 2.54},
+            'cloud_cover': {'error_threshold': 1},
+            'wind_dir': {'error_threshold': 45},
+            'wind_speed': {'error_threshold': 1.34}
         }
         self.errors = {}
         for day in self.valid_lead_ds:
