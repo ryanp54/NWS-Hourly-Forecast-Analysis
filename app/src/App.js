@@ -302,11 +302,13 @@ const ForecastChart = ({ analysis, weather, activeDays, onChange }) => {
 
 function ErrorStatsDisplay({ stats, weather, activeDay }) {
   const activeStats = (stats[activeDay[0]] || stats[activeDay])[weather.propName];
+  const activeDayDisplayText = activeDay === 'all' ? 'Cumulative' : toTitleCase(activeDay);
+  
   return (
     <Container>
       <Row className='d-flex justify-content-center'>
         <h5>
-          {`${weather.displayName} Forecast Accuracy: ${toTitleCase(activeDay)}`}
+          {`${weather.displayName} Forecast Accuracy: ${activeDayDisplayText}`}
         </h5>
       </Row>
       <Row className='d-flex justify-content-center'>
