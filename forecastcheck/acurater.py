@@ -20,7 +20,7 @@ class AveError(object):
         return str(self.error)
 
     def __repr__(self):
-        return '{0.__dict__}'.format(self) 
+        return '{0.__dict__}'.format(self)
 
     def __add__(self, addend):
         if addend is not None:
@@ -28,20 +28,23 @@ class AveError(object):
             error = addend.error if isinstance(addend, AveError) else addend
             total_abs_error = self.error*self.n + abs(error)*add_n
             total_n = self.n + add_n
-            return self if total_n == 0 else AveError(total_abs_error/total_n, total_n)
+            return self if total_n == 0 else AveError(
+                total_abs_error/total_n, total_n)
         else:
             return self
 
     def __sub__(self, subtrahend):
         if subtrahend is not None:
-            # TODO: Make work correctly
-            sub_n = subtrahend.n if isinstance(subtrahend, AveError) else 1
-            error = subtrahend.error if isinstance(subtrahend, AveError) else subtrahend
-            total_abs_error = self.error*self.n - abs(error)
+            is_ave_error = isinstance(subtrahend, AveError)
+            sub_n = subtrahend.n if is_ave_error else 1
+            error = subtrahend.error if is_ave_error else subtrahend
+            total_abs_error = self.error*self.n - abs(error)*sub_n
             if total_abs_error < 0:
-                raise ValueError('AveError subtraction resulted in a negative total error.')
+                raise ValueError(
+                    'AveError subtraction resulted in a negative total error.')
             total_n = self.n - sub_n
-            return self if total_n == 0 else AveError(total_abs_error/total_n, total_n)
+            return self if total_n == 0 else AveError(
+                total_abs_error/total_n, total_n)
         else:
             return self
 
@@ -63,20 +66,19 @@ class Bias(object):
             add_n = addend.n if isinstance(addend, Bias) else 1
             bias = addend.bias if isinstance(addend, Bias) else addend
             total_bias = self.bias*self.n + bias*add_n
-            total_n = self.n + add_n
-            return self if total_n == 0 else Bias(total_bias/total_n, total_n)
+            n = self.n + add_n
+            return self if n == 0 else Bias(total_bias/n, n)
         else:
             return self
 
     def __sub__(self, subtrahend):
         if subtrahend is not None:
-            # TODO: Make work correctly
-            isBias = isinstance(subtrahend, Bias)
-            sub_n = subtrahend.n if isBias else 1
-            bias = subtrahend.bias if isBias else subtrahend
-            total_bias = self.bias*self.n - bias
-            total_n = self.n - sub_n
-            return self if total_n == 0 else Bias(total_bias/total_n, total_n)
+            is_bias = isinstance(subtrahend, Bias)
+            sub_n = subtrahend.n if is_bias else 1
+            bias = subtrahend.bias if is_bias else subtrahend
+            total_bias = self.bias*self.n - bias*sub_n
+            n = self.n - sub_n
+            return Bias() if n == 0 else Bias(total_bias/n, n)
         else:
             return self
 
@@ -114,20 +116,24 @@ class Accuracy(object):
 
     def __sub__(self, subtrahend):
         if isinstance(subtrahend, Accuracy):
-            # TODO: Correct to make work correctly
-            n = self.n + subtrahend.n
-            # TODO: Handle n=0
-            accuracy = (self.accuracy + subtrahend.accuracy)/n
-            return Accuracy(self.error_threshold, accuracy, n)
+            n = self.n - subtrahend.n
+            if n == 0:
+                accuracy = 0.0
+            else:
+                accuracy = (self.accuracy*self.n
+                            - subtrahend.accuracy*subtrahend.n)/n
         elif subtrahend is not None:
             n = self.n - 1
-            if abs(subtrahend) < self.error_threshold:
+            if n == 0:
+                accuracy = 0.0
+            elif abs(subtrahend) < self.error_threshold:
                 accuracy = (self.accuracy*self.n - 1)/n
             else:
                 accuracy = self.accuracy*self.n/n
-            return Accuracy(self.error_threshold, accuracy, n)
         else:
             return self
+
+        return Accuracy(self.error_threshold, accuracy, n)
 
 
 class SimpleError(object):
@@ -290,7 +296,7 @@ class FcastAnalysis(object):
         cumulative = {}
         for errors in self.errors.values():
             for weather_type, error in errors.items():
-                if weather_type in cumulative and not 'precip' in weather_type:
+                if weather_type in cumulative and 'precip' not in weather_type:
                     cumulative[weather_type] += error
                 else:
                     cumulative[weather_type] = copy.deepcopy(error)
