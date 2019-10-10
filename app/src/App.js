@@ -10,7 +10,6 @@ import {
   Rect,
   Text,
   VictoryChart,
-  VictoryContainer,
   VictoryAxis,
   VictoryArea,
   VictoryGroup,
@@ -226,7 +225,7 @@ const ForecastChart = ({ analysis, weather, activeDays, onChange }) => {
     <Container className='pt-3'>
       <Row>
         <ErrorStatsDisplay
-          activeDay={activeDays[0]}
+          activeDay={activeDays.length === 1 ? activeDays[0] : 'all'}
           stats={analysis.stats}
           weather={weather}
         />
@@ -302,12 +301,12 @@ const ForecastChart = ({ analysis, weather, activeDays, onChange }) => {
 };
 
 function ErrorStatsDisplay({ stats, weather, activeDay }) {
-  const activeStats = stats[activeDay[0]][weather.propName];
+  const activeStats = (stats[activeDay[0]] || stats[activeDay])[weather.propName];
   return (
     <Container>
       <Row className='d-flex justify-content-center'>
         <h5>
-          {`${weather.displayName} Forecast Accuracy: ${activeDay}`}
+          {`${weather.displayName} Forecast Accuracy: ${toTitleCase(activeDay)}`}
         </h5>
       </Row>
       <Row className='d-flex justify-content-center'>
@@ -458,12 +457,12 @@ function ActiveDataDisplay({ displayName, data }) {
 
   return (
     <Container className='h6 font-weight-normal'>
-      <Row className='d-flex justify-content-center pb-2 '>
+      <Row className='pb-2 d-flex justify-content-center'>
         <Col>
            {`${displayName} on ${date} at ${time}`}
          </Col>
       </Row>
-      <Row className='px-2'>
+      <Row>
         {formattedData}
       </Row>
     </Container>
