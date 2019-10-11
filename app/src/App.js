@@ -3,7 +3,7 @@ import React, {
 } from 'react';
 
 import {
-  Container, Row, Col, Button,
+  Container, Row, Col, Button, Tabs, Tab,
 } from 'react-bootstrap';
 
 import {
@@ -35,7 +35,7 @@ function ForecastDayPicker({ label, onChange, ...rest }) {
   const [warned, setWarned] = useState(false);
 
   return (
-    <Col md={'auto'} className='pb-3'>
+    <Col className='pb-3'>
       <Row>
         <Col>
           <label>
@@ -307,9 +307,9 @@ function ErrorStatsDisplay({ stats, weather, activeDay }) {
   return (
     <Container>
       <Row className='d-flex justify-content-center'>
-        <h5>
-          {`${weather.displayName} Forecast Accuracy: ${activeDayDisplayText}`}
-        </h5>
+        <h6>
+          {`Forecast Accuracy: ${activeDayDisplayText}`}
+        </h6>
       </Row>
       <Row className='d-flex justify-content-center'>
           {
@@ -459,7 +459,7 @@ function ActiveDataDisplay({ displayName, data }) {
 
   return (
     <Container className='h6 font-weight-normal'>
-      <Row className='pb-2 d-flex justify-content-center'>
+      <Row className='d-flex justify-content-center pb-2'>
         <Col>
            {`${displayName} on ${date} at ${time}`}
          </Col>
@@ -480,8 +480,6 @@ function LabeledValue({
   let formattedValue;
   if (valueType === 'accuracy') {
     formattedValue = formatForDisplay(value * 100.0, '%');
-  } else if (valueType.includes('bias')) {
-    formattedValue = formatForDisplay(value, '');
   } else {
     formattedValue = formatForDisplay(value, '°C');
   }
@@ -496,92 +494,121 @@ function LabeledValue({
 /* * * Main App * * */
 
 function AnalysisPage() {
-  const weather = useMemo(() => (
-    { propName: 'temperature', displayName: 'Temperature', errorThreshold: 1.67 }
-  ), []);
-  const [analysis, setAnalysis] = useState(formatDataForChart(JSON.parse(testData), weather));
-  const [resultsMessage, setResultsMessage] = useState('Select date range.');
+  const [weather, setWeather] = useState('temperature');
+  const [analysis, setAnalysis] = useState(formatDataForChart(JSON.parse(testData)));
+  const [statusMessage, setStatusMessage] = useState('Select date range.');
 
   return (
     <Container>
-      <Row>
+      <Row className='py-4'>
         <DateRangeForm
           onFetch={(request) => {
-            setResultsMessage('Retrieving...');
+            setStatusMessage('Retrieving...');
             setAnalysis(null);
             request.then((resp) => resp.json())
-              .then((json) => { setAnalysis(formatDataForChart(json, weather)); })
-              .catch((error) => setResultsMessage(error.message));
+              .then((json) => {
+                setAnalysis(formatDataForChart(json));
+              }).catch((error) => setStatusMessage(error.message));
           }}
         />
       </Row>
-      <Row>
-        {
-          analysis
-            ? <AnalysisChart analysis={analysis} weather={weather} />
-            : resultsMessage
+      {
+        analysis
+          ? (
+            <Row>
+              <Container>
+                <Tabs activeKey={weather} onSelect={(key) => setWeather(key)} justify className='h6'>
+                  {
+                    Object.values(analysis).map((weatherType) => (
+                      <Tab
+                        eventKey={weatherType.metaData.propName}
+                        title={weatherType.metaData.displayName}
+                        key={weatherType.metaData.propName}
+                      />
+                    ))
+                  }
+                </Tabs>
+              </Container>
+              <AnalysisChart
+                analysis={analysis[weather]}
+                weather={analysis[weather].metaData}
+              />
+            </Row>
+          )
+          : <Row> statusMessage </Row>
         }
-      </Row>
     </Container>
   );
 }
 
-function formatDataForChart(json, weather) {
-  const obsData = json.obs.reduce((data, ob) => {
-    if (ob.observed_weather[weather.propName]) {
-      data.push({
-        x: parseToUTC(ob.time),
-        y: ob.observed_weather[weather.propName],
-      });
-    }
-    return data;
-  }, []);
+function formatDataForChart(json) {
+  const analysisObj = {};
+  const weathers = Object.entries(json.errors[1]).map(([key, val]) => ({
+    propName: key,
+    displayName: toTitleCase(key),
+    errorThreshold: val.accuracy.error_threshold,
+  }));
 
-  const [fcastData, errorData] = (() => {
-    const forecasts = {};
-    const errors = {};
-    Object.keys(json.fcasts).forEach((day) => {
-      forecasts[day] = [];
-      errors[day] = [];
-      json.fcasts[day].forEach((fcast) => {
-        const time = parseToUTC(fcast.valid_time);
-        const fcastValue = fcast.predicted_weather[weather.propName];
-        forecasts[day].push({
-          x: time,
-          y: fcastValue,
+  weathers.forEach((weatherType) => {
+    const obsData = json.obs.reduce((data, ob) => {
+      if (ob.observed_weather[weatherType.propName]) {
+        data.push({
+          x: parseToUTC(ob.time),
+          y: ob.observed_weather[weatherType.propName],
         });
+      }
+      return data;
+    }, []);
 
-        const obs = obsData.filter((ob) => ob.x.valueOf() === time.valueOf());
-        if (obs.length === 1 && Math.abs(fcastValue - obs[0].y) > weather.errorThreshold) {
-          const erreaDatum = {
+    const [fcastData, errorData] = (() => {
+      const forecasts = {};
+      const errors = {};
+      Object.keys(json.fcasts).forEach((day) => {
+        forecasts[day] = [];
+        errors[day] = [];
+        json.fcasts[day].forEach((fcast) => {
+          const time = parseToUTC(fcast.valid_time);
+          const fcastValue = fcast.predicted_weather[weatherType.propName];
+          forecasts[day].push({
             x: time,
             y: fcastValue,
-            y0: obs[0].y,
-            amount: fcastValue - obs[0].y,
-          };
-          const lastErrea = errors[day].length > 0 ? errors[day][errors[day].length - 1] : false;
-          if (
-            lastErrea
-            && lastErrea.slice(-1)[0].x.valueOf() === time.valueOf() - 3600000
-          ) {
-            lastErrea.push(erreaDatum);
-          } else {
-            errors[day].push([erreaDatum]);
+          });
+
+          const obs = obsData.filter((ob) => ob.x.valueOf() === time.valueOf());
+          if (obs.length === 1 && Math.abs(fcastValue - obs[0].y) > weatherType.errorThreshold) {
+            const erreaDatum = {
+              x: time,
+              y: fcastValue,
+              y0: obs[0].y,
+              amount: fcastValue - obs[0].y,
+            };
+            const lastErrea = errors[day].length > 0 ? errors[day][errors[day].length - 1] : false;
+            if (
+              lastErrea
+              && lastErrea.slice(-1)[0].x.valueOf() === time.valueOf() - 3600000
+            ) {
+              lastErrea.push(erreaDatum);
+            } else {
+              errors[day].push([erreaDatum]);
+            }
           }
-        }
+        });
       });
-    });
 
-    return [forecasts, errors];
-  })();
+      return [forecasts, errors];
+    })();
 
-  return {
-    obsData,
-    fcastData,
-    errorData,
-    stats: json.errors,
-    allFcastDays: Object.keys(fcastData).map((key) => `${key}-Day`),
-  };
+    Object.assign(analysisObj, { [weatherType.propName]: {
+      obsData,
+      fcastData,
+      errorData,
+      metaData: weatherType,
+      stats: json.errors,
+      allFcastDays: Object.keys(fcastData).map((key) => `${key}-Day`),
+    }});
+  });
+
+  return analysisObj;
 }
 
 export default AnalysisPage;

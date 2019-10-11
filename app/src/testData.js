@@ -1,21 +1,6 @@
 export const testData = `{
   "errors": {
-    "1": {
-      "cloud_cover": {
-        "accuracy": {
-          "accuracy": 0.6826347305389221, 
-          "error_threshold": 1, 
-          "n": 167
-        }, 
-        "ave_error": {
-          "error": 0.38323353293413176, 
-          "n": 167
-        }, 
-        "bias": {
-          "bias": -0.38323353293413176, 
-          "n": 167
-        }
-      }, 
+    "1": { 
       "dewpoint": {
         "accuracy": {
           "accuracy": 0.8622754491017964, 
@@ -30,39 +15,7 @@ export const testData = `{
           "bias": 0.21044577511645635, 
           "n": 167
         }
-      }, 
-      "precip_6hr": {
-        "accuracy": {
-          "accuracy": 0.5294117647058824, 
-          "error_threshold": 2.54, 
-          "n": 17
-        }, 
-        "ave_error": {
-          "error": 5.567882352941176, 
-          "n": 17
-        }, 
-        "bias": {
-          "bias": -2.372823529411765, 
-          "n": 17
-        }
-      }, 
-      "precip_chance": {
-        "bin_count": {
-          "bias": 0.7588, 
-          "bins": {
-            "0": 0, 
-            "10": 0, 
-            "100": 7, 
-            "20": 2, 
-            "30": 2, 
-            "40": 1, 
-            "50": 3, 
-            "60": 4, 
-            "70": 3, 
-            "80": 3
-          }
-        }
-      }, 
+      },
       "temperature": {
         "accuracy": {
           "accuracy": 0.7245508982035925, 
@@ -77,22 +30,7 @@ export const testData = `{
           "bias": 0.12082501663343607, 
           "n": 167
         }
-      }, 
-      "wind_dir": {
-        "accuracy": {
-          "accuracy": 0.9230769230769231, 
-          "error_threshold": 45, 
-          "n": 130
-        }, 
-        "ave_error": {
-          "error": 18.538461538461533, 
-          "n": 130
-        }, 
-        "bias": {
-          "bias": 11.923076923076925, 
-          "n": 130
-        }
-      }, 
+      },
       "wind_speed": {
         "accuracy": {
           "accuracy": 0.6036585365853661, 
@@ -8486,7 +8424,8 @@ export const testData = `{
           "cloud_cover": 23, 
           "dewpoint": 6.666666666666686, 
           "precip_1hr": null, 
-          "precip_6hr": null, 
+          "precip_6hr"
+: null, 
           "precip_chance": 1, 
           "temperature": 9.444444444444457, 
           "weather": null, 
@@ -16523,7 +16462,8 @@ export const testData = `{
           "wind_dir": 10, 
           "wind_speed": 3.086664
         }, 
-        "valid_time": "2019-10-02T07:00:00"
+        "valid_time":
+ "2019-10-02T07:00:00"
       }, 
       {
         "lead_days": 6, 
