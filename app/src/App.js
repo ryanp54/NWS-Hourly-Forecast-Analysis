@@ -301,7 +301,7 @@ const ForecastChart = ({ analysis, weather, activeDays, onChange }) => {
 };
 
 function ErrorStatsDisplay({ stats, weather, activeDay }) {
-  const activeStats = (stats[activeDay[0]] || stats[activeDay])[weather.propName];
+  const activeStats = (stats[activeDay[0]] || stats[activeDay])[weather.prop_name];
   const activeDayDisplayText = activeDay === 'all' ? 'Cumulative' : toTitleCase(activeDay);
   
   return (
@@ -495,9 +495,9 @@ function LabeledValue({
 
 function AnalysisPage() {
   const [weather, setWeather] = useState('temperature');
-  const [analysis, setAnalysis] = useState(formatDataForChart(JSON.parse(testData)));
+  const [analysis, setAnalysis] = useState(JSON.parse(testData));
   const [statusMessage, setStatusMessage] = useState('Select date range.');
-
+  debugger
   return (
     <Container>
       <Row className='py-4'>
@@ -507,7 +507,7 @@ function AnalysisPage() {
             setAnalysis(null);
             request.then((resp) => resp.json())
               .then((json) => {
-                setAnalysis(formatDataForChart(json));
+                setAnalysis(json);
               }).catch((error) => setStatusMessage(error.message));
           }}
         />
@@ -521,9 +521,9 @@ function AnalysisPage() {
                   {
                     Object.values(analysis).map((weatherType) => (
                       <Tab
-                        eventKey={weatherType.metaData.propName}
-                        title={weatherType.metaData.displayName}
-                        key={weatherType.metaData.propName}
+                        eventKey={weatherType.metadata.prop_name}
+                        title={weatherType.metadata.displayName}
+                        key={weatherType.metadata.prop_name}
                       />
                     ))
                   }
@@ -535,80 +535,10 @@ function AnalysisPage() {
               />
             </Row>
           )
-          : <Row> statusMessage </Row>
+          : <Row> {statusMessage} </Row>
         }
     </Container>
   );
-}
-
-function formatDataForChart(json) {
-  const analysisObj = {};
-  const weathers = Object.entries(json.errors[1]).map(([key, val]) => ({
-    propName: key,
-    displayName: toTitleCase(key),
-    errorThreshold: val.accuracy.error_threshold,
-  }));
-
-  weathers.forEach((weatherType) => {
-    const obsData = json.obs.reduce((data, ob) => {
-      if (ob.observed_weather[weatherType.propName]) {
-        data.push({
-          x: parseToUTC(ob.time),
-          y: ob.observed_weather[weatherType.propName],
-        });
-      }
-      return data;
-    }, []);
-
-    const [fcastData, errorData] = (() => {
-      const forecasts = {};
-      const errors = {};
-      Object.keys(json.fcasts).forEach((day) => {
-        forecasts[day] = [];
-        errors[day] = [];
-        json.fcasts[day].forEach((fcast) => {
-          const time = parseToUTC(fcast.valid_time);
-          const fcastValue = fcast.predicted_weather[weatherType.propName];
-          forecasts[day].push({
-            x: time,
-            y: fcastValue,
-          });
-
-          const obs = obsData.filter((ob) => ob.x.valueOf() === time.valueOf());
-          if (obs.length === 1 && Math.abs(fcastValue - obs[0].y) > weatherType.errorThreshold) {
-            const erreaDatum = {
-              x: time,
-              y: fcastValue,
-              y0: obs[0].y,
-              amount: fcastValue - obs[0].y,
-            };
-            const lastErrea = errors[day].length > 0 ? errors[day][errors[day].length - 1] : false;
-            if (
-              lastErrea
-              && lastErrea.slice(-1)[0].x.valueOf() === time.valueOf() - 3600000
-            ) {
-              lastErrea.push(erreaDatum);
-            } else {
-              errors[day].push([erreaDatum]);
-            }
-          }
-        });
-      });
-
-      return [forecasts, errors];
-    })();
-
-    Object.assign(analysisObj, { [weatherType.propName]: {
-      obsData,
-      fcastData,
-      errorData,
-      metaData: weatherType,
-      stats: json.errors,
-      allFcastDays: Object.keys(fcastData).map((key) => `${key}-Day`),
-    }});
-  });
-
-  return analysisObj;
 }
 
 export default AnalysisPage;

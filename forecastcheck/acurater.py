@@ -9,6 +9,8 @@ from google.appengine.ext import ndb
 
 from forecastcheck.ndb_setup import Weather, Observation, Forecast
 
+MM_PER_M = 1000
+
 
 class AveError(object):
     """TODO"""
@@ -246,77 +248,117 @@ class BinCount(object):
 
 class FcastAnalysis(object):
     """TODO: docstring"""
+    wx_types = {
+        'temperature': {
+            'prop_name': 'temperature',
+            'diplay_name': 'Temperature',
+            'units': 'degrees C'
+        },
+        'dewpoint': {
+            'prop_name': 'dewpoint',
+            'diplay_name': 'Dewpoint',
+            'units': 'degrees C'
+        },
+        'precip_6hr': {
+            'prop_name': 'precip_6hr',
+            'diplay_name': '6-Hour Precipitation Amount',
+            'units': 'mm'
+        },
+        'cloud_cover': {
+            'prop_name': 'cloud_cover',
+            'diplay_name': 'Cloud Cover',
+            'units': '%'
+        },
+        'wind_dir': {
+            'prop_name': 'wind_dir',
+            'diplay_name': 'Wind Direction',
+            'units': 'degrees '
+        },
+        'wind_speed': {
+            'prop_name': 'wind_speed',
+            'diplay_name': 'Wind Speed',
+            'units': 'knts'
+        },
+        'precip_chance': {
+            'prop_name': 'precip_chance',
+            'diplay_name': 'Precipitation Chance',
+            'units': '%'
+        },
+    }
 
     def __init__(self, start_t, end_t='9999-12-31', valid_lead_ds=range(1, 8)):
-        self.start_t = start_t + 'T00:00:00'
-        self.end_t = end_t + 'T23:00:00'
-        self.valid_lead_ds = valid_lead_ds
-        self.obs = Observation.query(
+        obs = Observation.query(
             Observation.time >= start_t,
             Observation.time <= end_t
         ).fetch()
-        self._init_errors()
-        self.data = {
-            'obs': [],
-            'fcasts': {'{}'.format(i): [] for i in range(1, 8)},
-            'errors': self.errors
+
+        self.analyses = self._init_analyses(valid_lead_ds)
+        self._analyze(obs)
+
+    def _init_analyses(self, valid_lead_ds):
+        defaultStats = {
+            'temperature': SimpleError(error_threshold=1.67),
+            'dewpoint': SimpleError(error_threshold=1.67),
+            'precip_6hr': SimpleError(error_threshold=2.54),
+            'cloud_cover': SimpleError(error_threshold=1),
+            'wind_dir': SimpleError(error_threshold=45),
+            'wind_speed': SimpleError(error_threshold=1.34),
+            'precip_chance': BinCount()
         }
-        self._analyze()
 
-    def _init_errors(self):
-        wx_simple_errors = {
-            'temperature': {'error_threshold': 1.67},
-            'dewpoint': {'error_threshold': 1.67},
-            'precip_6hr': {'error_threshold': 2.54},
-            'cloud_cover': {'error_threshold': 1},
-            'wind_dir': {'error_threshold': 45},
-            'wind_speed': {'error_threshold': 1.34}
-        }
-        self.errors = {}
-        for day in self.valid_lead_ds:
-            self.errors[day] = {}
-            for prop, kwargs in wx_simple_errors.items():
-                self.errors[day][prop] = SimpleError(**kwargs)
-            self.errors[day]['precip_chance'] = BinCount()
+        analyses = {}
+        for wx_type, data in self.wx_types.items():
+            analyses[wx_type] = {
+                'obs': [],
+                'metadata': data,
+                'lead_days': {},
+                'cumulative_stats': defaultStats.get(wx_type, SimpleError())
+            }
 
-    def _analyze(self):
-        for ob in self.obs:
-            self.data['obs'].append(ob.to_dict())
-            self.fcasts = Forecast.query(
-                Forecast.valid_time == ob.time
-            ).fetch()
-            for fcast in self.fcasts:
-                self.data['fcasts'][str(fcast.lead_days)].append(
-                    fcast.to_dict()
-                )
-                self._get_simple_errors(ob, fcast)
-                self._get_wind_errors(ob, fcast)
-                self._analyze_precip_chance(ob, fcast)
+            for lead_day in valid_lead_ds:
+                analyses[wx_type]['lead_days'][lead_day] = {
+                    'stats': defaultStats.get(wx_type, SimpleError()),
+                    'fcasts': []
+                }
 
-        cumulative = {}
-        for errors in self.errors.values():
-            for weather_type, error in errors.items():
-                if weather_type in cumulative and 'precip' not in weather_type:
-                    cumulative[weather_type] += error
-                else:
-                    cumulative[weather_type] = copy.deepcopy(error)
+        return analyses
 
-        self.errors['all'] = cumulative
-
-    def _get_simple_errors(self, ob, fcast):
+    def _analyze(self, obs):
         wx_error_fns = {
             'temperature': lambda ob, fcast: fcast - ob,
             'dewpoint': lambda ob, fcast: fcast - ob,
             'precip_6hr': lambda ob, fcast: (
-                fcast - (ob*1000) if fcast + ob > 0 else None
+                fcast - (ob*MM_PER_M) if fcast + ob > 0 else None
             ),
             'cloud_cover': self._get_cloud_cover_error
         }
-        for prop, func in wx_error_fns.items():
-            ob_val = getattr(ob.observed_weather, prop)
-            fcast_val = getattr(fcast.predicted_weather, prop)
-            if fcast_val is not None and ob_val is not None:
-                self.errors[fcast.lead_days][prop] += func(ob_val, fcast_val)
+
+        for ob in obs:
+            valid_fcasts = Forecast.query(
+                Forecast.valid_time == ob.time
+            ).fetch()
+
+            for wx_type in wx_error_fns.keys():
+                ob_val = getattr(ob.observed_weather, wx_type)
+                self.analyses[wx_type]['obs'].append({
+                    ob.time: ob_val
+                })
+
+                leaddays_obj = self.analyses[wx_type]['lead_days']
+                for fcast in valid_fcasts:
+                    fcast_val = getattr(fcast.predicted_weather, wx_type)
+                    leaddays_obj[fcast.lead_days]['fcasts'].append({
+                        fcast.valid_time: fcast_val
+                    })
+
+                    if fcast_val is not None and ob_val is not None:
+                        error_val = wx_error_fns[wx_type](ob_val, fcast_val)
+                        leaddays_obj[fcast.lead_days]['stats'] += error_val
+                        self.analyses[wx_type]['cumulative_stats'] += error_val
+
+            # TODO: Recfactor these as well to work with new structure
+            # self._get_wind_errors(ob_val, fcast_val, wx_type)
+            # self._analyze_precip_chance(ob_val, fcast_val, wx_type)
 
     def _get_wind_errors(self, ob, fcast):
         ob_speed = ob.observed_weather.wind_speed

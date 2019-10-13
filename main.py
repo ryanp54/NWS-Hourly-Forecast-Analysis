@@ -89,7 +89,7 @@ def analyze_fcasts():
     start = request.args['start']
     end = request.args['end']
     fcast = FcastAnalysis(start, end)
-    return jsonify(ast.literal_eval(str(fcast.data)))
+    return jsonify(ast.literal_eval(str(fcast.analyses)))
 
 
 @app.route('/OAX/forecasts/')
