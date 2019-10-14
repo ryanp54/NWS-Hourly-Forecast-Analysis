@@ -7,8 +7,6 @@ import {
 } from 'react-bootstrap';
 
 import {
-  Rect,
-  Text,
   VictoryChart,
   VictoryAxis,
   VictoryArea,
@@ -110,21 +108,25 @@ function DateRangeForm({ onFetch }) {
   );
 }
 
-const ForecastChart = ({ analysis, weather, activeDays, onChange }) => {
+const ForecastChart = ({ analysis, activeDay, onChange }) => {
+  const activeFcasts = activeDay ? [activeDay] : Object.keys(analysis.lead_days);
+
   const displayedFcastLines = (
     <VictoryGroup displayName='Forecast' color='red'>
       {
-        activeDays.map((leadDay, i) => (
+        activeFcasts.map((leadDay, i) => (
           <VictoryLine
-            displayName={leadDay}
-            name={leadDay}
-            data={analysis.fcastData[leadDay[0]]}
+            displayName={`${leadDay}-Day`}
+            name={`${leadDay}-Day`}
+            key={leadDay}
+            data={analysis.lead_days[leadDay].fcasts}
+            x={(d) => new Date(Object.keys(d)[0])}
+            y={(d) => Object.values(d)[0]}
             style={{
               data: {
                 opacity: i >= 1 ? (9 - i) / 10 : 1.0,
               },
             }}
-            key={leadDay}
           />
         ))
       }
@@ -134,7 +136,13 @@ const ForecastChart = ({ analysis, weather, activeDays, onChange }) => {
 
   const observedLine = (
     <VictoryGroup displayName='Actual' color='black'>
-      <VictoryLine displayName='Actual' name='Actual' data={analysis.obsData} />
+      <VictoryLine
+        displayName='Actual'
+        name='Actual'
+        data={analysis.obs}
+        x={(d) => new Date(Object.keys(d)[0])}
+        y={(d) => Object.values(d)[0]}
+      />
     </VictoryGroup>
   );
 
@@ -150,40 +158,44 @@ const ForecastChart = ({ analysis, weather, activeDays, onChange }) => {
         legendSymbol: { type: 'square' },
       }}
     >
-      {activeDays.length === 1
-        ? analysis.errorData[activeDays[0][0]].map((errea, i) => (
+      {
+        activeDay
+          ? analysis.lead_days[activeDay].errors.map(
+            (errea, i) => (
               <VictoryArea
-                displayName={`Error-Area-${i}`}
-                name={`Error-Area-${i}`}
-                data={errea}
-                key={`Error-Area-${i}`}
-            />
-        ))
-        : []
+                  displayName={`Error-Area-${i}`}
+                  name={`Error-Area-${i}`}
+                  data={errea}
+                  key={`Error-Area-${i}`}
+              />
+            ),
+          )
+          : []
       }
     </VictoryGroup>
   );
 
   const legendData = [
-    ...analysis.allFcastDays.map(
-      (day) => {
-        const line = displayedFcastLines.props.children.find((child) => child.props.name === day)
-            || displayedFcastLines;
-        const style = { ...line.props.theme.line.style, ...line.props.style };
-        return {
-          name: day,
-          symbol: {
-            opacity: activeDays.includes(day) ? style.data.opacity : 0.1,
-            fill: displayedFcastLines.props.color,
-            cursor: 'pointer',
-          },
-          labels: {
-            opacity: activeDays.includes(day) ? 1 : 0.2,
-            cursor: 'pointer',
-          },
-        };
-      },
-    ),
+    ...Object.keys(analysis.lead_days).map((day) => {
+      const dayLabel = `${day}-Day`;
+      const line = displayedFcastLines.props.children.find(
+        (child) => child.props.name === dayLabel,
+      );
+      const style = line && { ...line.props.theme.line.style, ...line.props.style };
+
+      return {
+        name: `${day}-Day`,
+        symbol: {
+          opacity: line ? style.data.opacity : 0.1,
+          fill: displayedFcastLines.props.color,
+          cursor: 'pointer',
+        },
+        labels: {
+          opacity: line ? 1 : 0.2,
+          cursor: 'pointer',
+        },
+      };
+    }),
     ...[observedLine, displayedErrea].map(
       (group) => {
         const style = { ...group.props.theme.line.style, ...group.props.style };
@@ -206,28 +218,29 @@ const ForecastChart = ({ analysis, weather, activeDays, onChange }) => {
   ];
 
   const toggleDisplayed = (labelName) => {
-    let newActiveDays = false;
-    if (analysis.allFcastDays.length === activeDays.length) {
+    const allFcastDays = Object.keys(analysis.lead_days);
+    const [day] = labelName.split('-Day');
+    let newActiveDay = false;
+    if (!activeDay) {
       if (labelName.includes('Error')) {
-        newActiveDays = [analysis.allFcastDays[0]];
-      } else if (analysis.allFcastDays.includes(labelName)) {
-        newActiveDays = [labelName];
+        [newActiveDay] = activeFcasts;
+      } else if (allFcastDays.includes(day)) {
+        newActiveDay = day;
       }
-    } else if (labelName === 'Actual' || activeDays.includes(labelName)) {
-      newActiveDays = analysis.allFcastDays;
-    } else if (analysis.allFcastDays.includes(labelName)) {
-      newActiveDays = [labelName];
+    } else if (labelName === 'Actual' || activeFcasts.includes(day)) {
+      newActiveDay = null;
+    } else if (allFcastDays.includes(day)) {
+      newActiveDay = day;
     }
-    onChange(newActiveDays, []);
+    onChange(newActiveDay, []);
   };
 
   return (
     <Container className='pt-3'>
       <Row>
         <ErrorStatsDisplay
-          activeDay={activeDays.length === 1 ? activeDays[0] : 'all'}
-          stats={analysis.stats}
-          weather={weather}
+          activeDay={activeDay}
+          analysis={analysis}
         />
       </Row>
       <Row>
@@ -300,10 +313,10 @@ const ForecastChart = ({ analysis, weather, activeDays, onChange }) => {
   );
 };
 
-function ErrorStatsDisplay({ stats, weather, activeDay }) {
-  const activeStats = (stats[activeDay[0]] || stats[activeDay])[weather.prop_name];
-  const activeDayDisplayText = activeDay === 'all' ? 'Cumulative' : toTitleCase(activeDay);
-  
+function ErrorStatsDisplay({ analysis, activeDay }) {
+  const activeDayDisplayText = !activeDay ? 'Cumulative' : `${activeDay}-Day`;
+  const stats = !activeDay ? analysis.cumulative_stats : analysis.lead_days[activeDay].stats;
+
   return (
     <Container>
       <Row className='d-flex justify-content-center'>
@@ -313,13 +326,13 @@ function ErrorStatsDisplay({ stats, weather, activeDay }) {
       </Row>
       <Row className='d-flex justify-content-center'>
           {
-            Object.keys(activeStats).map((type) => (
-              Object.keys(activeStats[type]).map((prop) => {
+            Object.keys(stats).map((type) => (
+              Object.keys(stats[type]).map((prop) => {
                 if (type.includes(prop)) {
                   return (
                     <LabeledValue
                      label={type}
-                     value={activeStats[type][prop]}
+                     value={stats[type][prop]}
                      key={prop}
                    />
                   );
@@ -331,14 +344,6 @@ function ErrorStatsDisplay({ stats, weather, activeDay }) {
       </Row>
     </Container>
   );
-}
-
-// Clean up props that cause error messages.
-function CustomG({ children, ...rest }) {
-  rest.standalone = rest.standalone.toString();
-  delete rest.stringMap;
-
-  return <g { ...rest }> {children} </g>;
 }
 
 function Cursor({ x, scale }) {
@@ -359,14 +364,14 @@ function Cursor({ x, scale }) {
 
 const MemodForecastChart = React.memo(ForecastChart);
 
-function AnalysisChart({ analysis, weather }) {
-  const [activeFcastDays, setActiveFcastDays] = useState(analysis.allFcastDays);
+function AnalysisChart({ analysis }) {
+  const [activeFcastDay, setActiveFcastDay] = useState(null);
   const [activeData, setActiveData] = useState([]);
 
   const handleChange = useCallback(
-    (newActiveDays, newActiveData) => {
-      if (newActiveDays) {
-        setActiveFcastDays(newActiveDays);
+    (newActiveDay, newActiveData) => {
+      if (newActiveDay !== false) {
+        setActiveFcastDay(newActiveDay);
       }
       if (newActiveData) {
         setActiveData(newActiveData);
@@ -380,14 +385,14 @@ function AnalysisChart({ analysis, weather }) {
       <Row>
         <MemodForecastChart
           analysis={analysis}
-          weather={weather}
-          activeDays={activeFcastDays}
+          activeDay={activeFcastDay}
           onChange={handleChange}
         />
       </Row>
       <Row>
         <ActiveDataDisplay
-          displayName={weather.displayName}
+          // TODO: Fix spelling when data is fixed.
+          displayName={analysis.metadata.diplay_name}
           data={activeData}
         />
       </Row>
@@ -417,17 +422,21 @@ function ActiveDataDisplay({ displayName, data }) {
     return '';
   }
 
-  const [date, time] = data[0].x.toLocaleString({ dateStyle: 'short', timeStyle: 'short' })
+  const [date, time] = data[0]._x.toLocaleString({ dateStyle: 'short', timeStyle: 'short' })
     .split(',');
 
   const formattedData = [];
   let formattedErrorDatum;
   data.forEach((datum) => {
+    if (datum._y === null) {
+      return;
+    }
+
     if (!datum.childName.includes('Error')) {
       formattedData.push(
         <LabeledValue
           label={datum.childName}
-          value={datum.y}
+          value={datum._y}
           key={datum.childName}
         />,
       );
@@ -447,12 +456,11 @@ function ActiveDataDisplay({ displayName, data }) {
     if (fcasts.length === 1 && obs.length === 1) {
       formattedErrorDatum = <LabeledValue
           label='Forecast Error'
-          value={fcasts[0].y - obs[0].y}
+          value={fcasts[0]._y - obs[0]._y}
           key='Forecast Error'
         />;
     }
   }
-
   if (formattedErrorDatum) {
     formattedData.push(formattedErrorDatum);
   }
@@ -497,7 +505,15 @@ function AnalysisPage() {
   const [weather, setWeather] = useState('temperature');
   const [analysis, setAnalysis] = useState(JSON.parse(testData));
   const [statusMessage, setStatusMessage] = useState('Select date range.');
-  debugger
+
+  // List of weather types Analysis chart is set-up to handle.
+  // TODO: Finish all and refator to something more appropriate.
+  const workingWeathers = ['temperature', 'dewpoint', 'wind_speed'];
+
+  if (analysis) {
+    addErreaData(analysis);
+  }
+
   return (
     <Container>
       <Row className='py-4'>
@@ -519,11 +535,11 @@ function AnalysisPage() {
               <Container>
                 <Tabs activeKey={weather} onSelect={(key) => setWeather(key)} justify className='h6'>
                   {
-                    Object.values(analysis).map((weatherType) => (
+                    workingWeathers.map((weatherType) => (
                       <Tab
-                        eventKey={weatherType.metadata.prop_name}
-                        title={weatherType.metadata.displayName}
-                        key={weatherType.metadata.prop_name}
+                        eventKey={analysis[weatherType].metadata.prop_name}
+                        title={analysis[weatherType].metadata.diplay_name}
+                        key={analysis[weatherType].metadata.prop_name}
                       />
                     ))
                   }
@@ -531,7 +547,6 @@ function AnalysisPage() {
               </Container>
               <AnalysisChart
                 analysis={analysis[weather]}
-                weather={analysis[weather].metaData}
               />
             </Row>
           )
@@ -539,6 +554,40 @@ function AnalysisPage() {
         }
     </Container>
   );
+}
+
+function addErreaData(analysis) {
+  Object.values(analysis).forEach((data) => {
+    Object.entries(data.lead_days).forEach(([day, { fcasts }]) => {
+      const errors = [];
+      fcasts.forEach((fcast) => {
+        const [timeStr, value] = Object.entries(fcast)[0];
+        const time = new Date(timeStr);
+        // TODO: Change obs to dict for easier access here?
+        let ob = data.obs.filter((obj) => obj[timeStr])[0];
+        ob = ob && ob[timeStr];
+
+        if (ob && Math.abs(value - ob) > data.cumulative_stats.accuracy.error_threshold) {
+          const erreaDatum = {
+            x: time,
+            y: value,
+            y0: ob,
+            amount: value - ob,
+          };
+          const lastErrea = errors.length > 0 ? errors[errors.length - 1] : false;
+          if (
+            lastErrea
+            && lastErrea.slice(-1)[0].x.valueOf() === time.valueOf() - 3600000
+          ) {
+            lastErrea.push(erreaDatum);
+          } else {
+            errors.push([erreaDatum]);
+          }
+        }
+      });
+      data.lead_days[day].errors = errors;
+    });
+  });
 }
 
 export default AnalysisPage;
