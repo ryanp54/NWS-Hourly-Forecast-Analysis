@@ -22,7 +22,7 @@ import 'react-day-picker/lib/style.css';
 
 import './App.css';
 
-import { getDaysAgo, getISODate, parseToUTC } from './dateUtilities';
+import { getDaysAgo, getISODate } from './dateUtilities';
 import { testData } from './testData';
 
 const API_URL = '_self' in React.createElement('div')
@@ -391,8 +391,7 @@ function AnalysisChart({ analysis }) {
       </Row>
       <Row>
         <ActiveDataDisplay
-          // TODO: Fix spelling when data is fixed.
-          displayName={analysis.metadata.diplay_name}
+          displayName={analysis.metadata.display_name}
           data={activeData}
         />
       </Row>
@@ -538,7 +537,7 @@ function AnalysisPage() {
                     workingWeathers.map((weatherType) => (
                       <Tab
                         eventKey={analysis[weatherType].metadata.prop_name}
-                        title={analysis[weatherType].metadata.diplay_name}
+                        title={analysis[weatherType].metadata.display_name}
                         key={analysis[weatherType].metadata.prop_name}
                       />
                     ))
