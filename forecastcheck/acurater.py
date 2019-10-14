@@ -251,37 +251,37 @@ class FcastAnalysis(object):
     wx_types = {
         'temperature': {
             'prop_name': 'temperature',
-            'diplay_name': 'Temperature',
+            'display_name': 'Temperature',
             'units': 'degrees C'
         },
         'dewpoint': {
             'prop_name': 'dewpoint',
-            'diplay_name': 'Dewpoint',
+            'display_name': 'Dewpoint',
             'units': 'degrees C'
         },
         'precip_6hr': {
             'prop_name': 'precip_6hr',
-            'diplay_name': '6-Hour Precipitation Amount',
+            'display_name': '6-Hour Precipitation Amount',
             'units': 'mm'
         },
         'cloud_cover': {
             'prop_name': 'cloud_cover',
-            'diplay_name': 'Cloud Cover',
+            'display_name': 'Cloud Cover',
             'units': '%'
         },
         'wind_dir': {
             'prop_name': 'wind_dir',
-            'diplay_name': 'Wind Direction',
+            'display_name': 'Wind Direction',
             'units': 'degrees '
         },
         'wind_speed': {
             'prop_name': 'wind_speed',
-            'diplay_name': 'Wind Speed',
+            'display_name': 'Wind Speed',
             'units': 'knts'
         },
         'precip_chance': {
             'prop_name': 'precip_chance',
-            'diplay_name': 'Precipitation Chance',
+            'display_name': 'Precipitation Chance',
             'units': '%'
         },
     }
@@ -309,7 +309,7 @@ class FcastAnalysis(object):
         analyses = {}
         for wx_type, data in self.wx_types.items():
             analyses[wx_type] = {
-                'obs': [],
+                'obs': {},
                 'metadata': data,
                 'lead_days': {},
                 'cumulative_stats': defaultStats.get(wx_type, SimpleError())
@@ -318,7 +318,7 @@ class FcastAnalysis(object):
             for lead_day in valid_lead_ds:
                 analyses[wx_type]['lead_days'][lead_day] = {
                     'stats': defaultStats.get(wx_type, SimpleError()),
-                    'fcasts': []
+                    'fcasts': {}
                 }
 
         return analyses
@@ -340,16 +340,12 @@ class FcastAnalysis(object):
 
             for wx_type in wx_error_fns.keys():
                 ob_val = getattr(ob.observed_weather, wx_type)
-                self.analyses[wx_type]['obs'].append({
-                    ob.time: ob_val
-                })
+                self.analyses[wx_type]['obs'][ob.time] = ob_val
 
                 leaddays_obj = self.analyses[wx_type]['lead_days']
                 for fcast in valid_fcasts:
                     fcast_val = getattr(fcast.predicted_weather, wx_type)
-                    leaddays_obj[fcast.lead_days]['fcasts'].append({
-                        fcast.valid_time: fcast_val
-                    })
+                    leaddays_obj[fcast.lead_days]['fcasts'][fcast.valid_time] = fcast_val
 
                     if fcast_val is not None and ob_val is not None:
                         error_val = wx_error_fns[wx_type](ob_val, fcast_val)

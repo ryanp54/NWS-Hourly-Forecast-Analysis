@@ -119,9 +119,9 @@ const ForecastChart = ({ analysis, activeDay, onChange }) => {
             displayName={`${leadDay}-Day`}
             name={`${leadDay}-Day`}
             key={leadDay}
-            data={analysis.lead_days[leadDay].fcasts}
-            x={(d) => new Date(Object.keys(d)[0])}
-            y={(d) => Object.values(d)[0]}
+            data={Object.entries(analysis.lead_days[leadDay].fcasts)}
+            x={(datum) => new Date(datum[0])}
+            y={1}
             style={{
               data: {
                 opacity: i >= 1 ? (9 - i) / 10 : 1.0,
@@ -139,9 +139,9 @@ const ForecastChart = ({ analysis, activeDay, onChange }) => {
       <VictoryLine
         displayName='Actual'
         name='Actual'
-        data={analysis.obs}
-        x={(d) => new Date(Object.keys(d)[0])}
-        y={(d) => Object.values(d)[0]}
+        data={Object.entries(analysis.obs)}
+        x={(datum) => new Date(datum[0])}
+        y={1}
       />
     </VictoryGroup>
   );
@@ -560,12 +560,9 @@ function addErreaData(analysis) {
   Object.values(analysis).forEach((data) => {
     Object.entries(data.lead_days).forEach(([day, { fcasts }]) => {
       const errors = [];
-      fcasts.forEach((fcast) => {
-        const [timeStr, value] = Object.entries(fcast)[0];
+      Object.entries(fcasts).forEach(([timeStr, value]) => {
         const time = new Date(timeStr);
-        // TODO: Change obs to dict for easier access here?
-        let ob = data.obs.filter((obj) => obj[timeStr])[0];
-        ob = ob && ob[timeStr];
+        const ob = data.obs[timeStr];
 
         if (ob && Math.abs(value - ob) > data.cumulative_stats.accuracy.error_threshold) {
           const erreaDatum = {
