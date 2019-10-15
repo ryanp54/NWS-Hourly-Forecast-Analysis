@@ -352,27 +352,40 @@ class FcastAnalysis(object):
                         leaddays_obj[fcast.lead_days]['stats'] += error_val
                         self.analyses[wx_type]['cumulative_stats'] += error_val
 
+            self._get_wind_errors(ob, valid_fcasts)
             # TODO: Recfactor these as well to work with new structure
-            # self._get_wind_errors(ob_val, fcast_val, wx_type)
             # self._analyze_precip_chance(ob_val, fcast_val, wx_type)
 
-    def _get_wind_errors(self, ob, fcast):
+    def _get_wind_errors(self, ob, fcasts):
         ob_speed = ob.observed_weather.wind_speed
+        ob_dir = ob.observed_weather.wind_dir
         if ob_speed is not None:
-            ob_dir = ob.observed_weather.wind_dir
-            fcast_speed = fcast.predicted_weather.wind_speed
-            fcast_dir = fcast.predicted_weather.wind_dir
-            error_speed = fcast_speed - ob_speed
+            self.analyses['wind_speed']['obs'][ob.time] = ob_speed
             if ob_speed > 0:
-                # wind_dir observation is only valid if wind_speed > 0
-                error_dir = fcast_dir - ob_dir
-                if abs(error_dir) > 180:
-                    error_dir = error_dir - math.copysign(360, error_dir)
-                self.errors[fcast.lead_days]['wind_dir'] += error_dir
-            else:
-                # Adjust for non-observation of low speed winds
-                error_speed = 0.0 if fcast_speed < 1.6 else error_speed - 1.5
-            self.errors[fcast.lead_days]['wind_speed'] += error_speed
+                self.analyses['wind_dir']['obs'][ob.time] = ob_dir
+
+            for fcast in fcasts:
+                fcast_speed = fcast.predicted_weather.wind_speed
+                fcast_dir = fcast.predicted_weather.wind_dir
+                error_speed = fcast_speed - ob_speed
+                if ob_speed > 0:
+                    # wind_dir observation is only valid if wind_speed > 0
+                    error_dir = fcast_dir - ob_dir
+                    if abs(error_dir) > 180:
+                        error_dir = error_dir - math.copysign(360, error_dir)
+
+                    leaddays_obj = self.analyses['wind_dir']['lead_days'][fcast.lead_days]
+                    leaddays_obj['fcasts'][fcast.valid_time] = fcast_dir
+                    leaddays_obj['stats'] += error_dir
+                    self.analyses['wind_dir']['cumulative_stats'] += error_dir
+                else:
+                    # Adjust for non-observation of low speed winds
+                    error_speed = 0.0 if fcast_speed < 1.6 else error_speed - 1.5
+
+                leaddays_obj = self.analyses['wind_speed']['lead_days'][fcast.lead_days]
+                leaddays_obj['fcasts'][fcast.valid_time] = fcast_speed
+                leaddays_obj['stats'] += error_speed
+                self.analyses['wind_speed']['cumulative_stats'] += error_speed
 
     def _get_cloud_cover_error(self, ob, fcast):
         cc_categories = {
