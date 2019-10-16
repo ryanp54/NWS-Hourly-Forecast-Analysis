@@ -355,7 +355,6 @@ class FcastAnalysis(object):
             self._analyze_precip_chance(ob, valid_fcasts)
             self._get_cloud_cover_errors(ob, valid_fcasts)
 
-
     def _get_wind_errors(self, ob, fcasts):
         ob_speed = ob.observed_weather.wind_speed
         ob_dir = ob.observed_weather.wind_dir
@@ -377,6 +376,7 @@ class FcastAnalysis(object):
                     leaddays_obj = self.analyses['wind_dir']['lead_days'][fcast.lead_days]
                     leaddays_obj['fcasts'][fcast.valid_time] = fcast_dir
                     leaddays_obj['stats'] += error_dir
+
                     self.analyses['wind_dir']['cumulative_stats'] += error_dir
                 else:
                     # Adjust for non-observation of low speed winds
