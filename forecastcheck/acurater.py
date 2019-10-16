@@ -297,13 +297,13 @@ class FcastAnalysis(object):
 
     def _init_analyses(self, valid_lead_ds):
         defaultStats = {
-            'temperature': SimpleError(error_threshold=1.67),
-            'dewpoint': SimpleError(error_threshold=1.67),
-            'precip_6hr': SimpleError(error_threshold=2.54),
-            'cloud_cover': SimpleError(error_threshold=1),
-            'wind_dir': SimpleError(error_threshold=45),
-            'wind_speed': SimpleError(error_threshold=1.34),
-            'precip_chance': BinCount()
+            'temperature': lambda: SimpleError(error_threshold=1.67),
+            'dewpoint': lambda: SimpleError(error_threshold=1.67),
+            'precip_6hr': lambda: SimpleError(error_threshold=2.54),
+            'cloud_cover': lambda: SimpleError(error_threshold=1),
+            'wind_dir': lambda: SimpleError(error_threshold=45),
+            'wind_speed': lambda: SimpleError(error_threshold=1.34),
+            'precip_chance': lambda: BinCount()
         }
 
         analyses = {}
@@ -312,12 +312,12 @@ class FcastAnalysis(object):
                 'obs': {},
                 'metadata': data,
                 'lead_days': {},
-                'cumulative_stats': defaultStats.get(wx_type, SimpleError())
+                'cumulative_stats': defaultStats.get(wx_type, SimpleError)()
             }
 
             for lead_day in valid_lead_ds:
                 analyses[wx_type]['lead_days'][lead_day] = {
-                    'stats': defaultStats.get(wx_type, SimpleError()),
+                    'stats': defaultStats.get(wx_type, SimpleError)(),
                     'fcasts': {}
                 }
 
@@ -330,7 +330,6 @@ class FcastAnalysis(object):
             'precip_6hr': lambda ob, fcast: (
                 fcast - (ob*MM_PER_M) if fcast + ob > 0 else None
             ),
-            'cloud_cover': self._get_cloud_cover_error
         }
 
         for ob in obs:
@@ -353,8 +352,9 @@ class FcastAnalysis(object):
                         self.analyses[wx_type]['cumulative_stats'] += error_val
 
             self._get_wind_errors(ob, valid_fcasts)
-            # TODO: Recfactor these as well to work with new structure
-            # self._analyze_precip_chance(ob_val, fcast_val, wx_type)
+            self._analyze_precip_chance(ob, valid_fcasts)
+            self._get_cloud_cover_errors(ob, valid_fcasts)
+
 
     def _get_wind_errors(self, ob, fcasts):
         ob_speed = ob.observed_weather.wind_speed
@@ -387,43 +387,49 @@ class FcastAnalysis(object):
                 leaddays_obj['stats'] += error_speed
                 self.analyses['wind_speed']['cumulative_stats'] += error_speed
 
-    def _get_cloud_cover_error(self, ob, fcast):
+    def _get_cloud_cover_errors(self, ob, fcasts):
         cc_categories = {
-            'VV': {'val': -1, 'okta': {'min': 0.75, 'max': 8}},
-            'CLR': {'val': 0, 'okta': {'min': 0, 'max': 2.5}},
-            'SCT': {'val': 1, 'okta': {'min': 0.75, 'max': 5}},
-            'BKN': {'val': 2, 'okta': {'min': 3.5, 'max': 7.5}},
-            'OVC': {'val': 3, 'okta': {'min': 6.5, 'max': 8}},
+            'VV': {'val': -1, 'ave_%': None, 'ok_oktas': {'min': 0.75, 'max': 8}},
+            'CLR': {'val': 0, 'ave_%': 15, 'ok_oktas': {'min': 0, 'max': 2.5}},
+            'SCT': {'val': 1, 'ave_%': 35, 'ok_oktas': {'min': 0.75, 'max': 5}},
+            'BKN': {'val': 2, 'ave_%': 70, 'ok_oktas': {'min': 3.5, 'max': 7.5}},
+            'OVC': {'val': 3, 'ave_%': 90, 'ok_oktas': {'min': 6.5, 'max': 8}},
         }
-        ob_layers = [cc_categories[layer] for layer in ob.split(', ')]
+        OKTA_TO_PERCENT = 100/8
+        ob_layers = [cc_categories[layer] for layer in ob.observed_weather.cloud_cover.split(', ')]
         layers_max = max(ob_layers, key=lambda cc: cc['val'])
-        fcast_okta = fcast/12.5
-        # Handle special 'VV' case.
-        if layers_max == -1:
-            return 0 if fcast_okta >= 0.75 else 1
-        # Assign the forecasted category in a way that minimizes the
-        # error amount to avoid over punishing edge cases
-        if fcast_okta < layers_max['okta']['min']:
-            for category in sorted(
-                cc_categories.values(),
-                key=lambda cat: -cat['val']
-            ):
-                if fcast_okta >= category['okta']['min']:
-                    error = category['val'] - layers_max['val']
-                    break
-        elif fcast_okta > layers_max['okta']['max']:
-            for category in sorted(
-                cc_categories.values(),
-                key=lambda cat: cat['val']
-            ):
-                if fcast_okta <= category['okta']['max']:
-                    error = category['val'] - layers_max['val']
-                    break
-        else:
-            error = 0
-        return error
 
-    def _analyze_precip_chance(self, ob, fcast):
+        self.analyses['cloud_cover']['obs'][ob.time] = layers_max['ave_%']
+        for fcast in fcasts:
+            fcast_percent = fcast.predicted_weather.cloud_cover
+            self.analyses['cloud_cover']['lead_days'][fcast.lead_days]['fcasts'][fcast.valid_time] = fcast_percent
+            error = 0
+            # Handle special 'VV' case.
+            if layers_max == -1:
+                error = 0 if fcast_percent >= 0.75*OKTA_TO_PERCENT else 1
+            # Assign the forecasted category in a way that minimizes the
+            # error amount to avoid over punishing edge cases.
+            if fcast_percent < layers_max['ok_oktas']['min']*OKTA_TO_PERCENT:
+                for category in sorted(
+                    cc_categories.values(),
+                    key=lambda cat: -cat['val']
+                ):
+                    if fcast_percent >= category['ok_oktas']['min']*OKTA_TO_PERCENT:
+                        error = category['val'] - layers_max['val']
+                        break
+            elif fcast_percent > layers_max['ok_oktas']['max']*OKTA_TO_PERCENT:
+                for category in sorted(
+                    cc_categories.values(),
+                    key=lambda cat: cat['val']
+                ):
+                    if fcast_percent <= category['ok_oktas']['max']*OKTA_TO_PERCENT and category['val'] != -1:
+                        error = category['val'] - layers_max['val']
+                        break
+
+            self.analyses['cloud_cover']['lead_days'][fcast.lead_days]['stats'] += error
+            self.analyses['cloud_cover']['cumulative_stats'] += error
+
+    def _analyze_precip_chance(self, ob, fcasts):
         precip_terms = [
             'drizzle',
             'rain',
@@ -432,8 +438,9 @@ class FcastAnalysis(object):
             'thunderstorm',
             'unknown'
         ]
-        precip_chance = fcast.predicted_weather.precip_chance
+
         wx_obs = ob.observed_weather.all_weather
+        precip_obs = []
         if wx_obs is not None:
             wx_obs = wx_obs.split(', ')
             precip_obs = [
@@ -441,9 +448,14 @@ class FcastAnalysis(object):
                     [wx_ob == term for term in precip_terms]
                 ) for wx_ob in wx_obs
             ]
+
+        for fcast in fcasts:
+            precip_chance = fcast.predicted_weather.precip_chance
             if any(precip_obs):
-                self.errors[fcast.lead_days]['precip_chance'].reg_ob(
-                    precip_chance)
+                self.analyses['precip_chance'][
+                    'lead_days'][fcast.lead_days]['stats'].reg_ob(precip_chance)
+                self.analyses['precip_chance']['cumulative_stats'].reg_ob(precip_chance)
             else:
-                self.errors[fcast.lead_days]['precip_chance'].reg_predicted(
-                    precip_chance)
+                self.analyses['precip_chance'][
+                    'lead_days'][fcast.lead_days]['stats'].reg_predicted(precip_chance)
+                self.analyses['precip_chance']['cumulative_stats'].reg_predicted(precip_chance)
