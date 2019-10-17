@@ -252,32 +252,38 @@ class FcastAnalysis(object):
         'temperature': {
             'prop_name': 'temperature',
             'display_name': 'Temperature',
-            'units': 'degrees C'
+            'units': 'degrees C',
+            'error_threshold': 1.67
         },
         'dewpoint': {
             'prop_name': 'dewpoint',
             'display_name': 'Dewpoint',
-            'units': 'degrees C'
+            'units': 'degrees C',
+            'error_threshold': 1.67
         },
         'precip_6hr': {
             'prop_name': 'precip_6hr',
             'display_name': '6-Hour Precipitation Amount',
-            'units': 'mm'
+            'units': 'mm',
+            'error_threshold': 2.54
         },
         'cloud_cover': {
             'prop_name': 'cloud_cover',
             'display_name': 'Cloud Cover',
-            'units': '%'
+            'units': '%',
+            'error_threshold': 1
         },
         'wind_dir': {
             'prop_name': 'wind_dir',
             'display_name': 'Wind Direction',
-            'units': 'degrees '
+            'units': 'degrees ',
+            'error_threshold': 45
         },
         'wind_speed': {
             'prop_name': 'wind_speed',
             'display_name': 'Wind Speed',
-            'units': 'knts'
+            'units': 'knts',
+            'error_threshold': 1.34
         },
         'precip_chance': {
             'prop_name': 'precip_chance',
@@ -296,14 +302,18 @@ class FcastAnalysis(object):
         self._analyze(obs)
 
     def _init_analyses(self, valid_lead_ds):
-        defaultStats = {
-            'temperature': lambda: SimpleError(error_threshold=1.67),
-            'dewpoint': lambda: SimpleError(error_threshold=1.67),
-            'precip_6hr': lambda: SimpleError(error_threshold=2.54),
-            'cloud_cover': lambda: SimpleError(error_threshold=1),
-            'wind_dir': lambda: SimpleError(error_threshold=45),
-            'wind_speed': lambda: SimpleError(error_threshold=1.34),
-            'precip_chance': lambda: BinCount()
+        
+        def make_statfn(error_threshold):
+            def fn():
+                if error_threshold:
+                    return SimpleError(error_threshold=error_threshold)
+                else:
+                    return BinCount()
+            return fn
+
+        defaultStats = { 
+            wx_type: make_statfn(data.get('error_threshold'))
+            for wx_type, data in self.wx_types.items()
         }
 
         analyses = {}
@@ -312,13 +322,14 @@ class FcastAnalysis(object):
                 'obs': {},
                 'metadata': data,
                 'lead_days': {},
-                'cumulative_stats': defaultStats.get(wx_type, SimpleError)()
+                'cumulative_stats': defaultStats.get(wx_type, SimpleError)(),
             }
 
             for lead_day in valid_lead_ds:
                 analyses[wx_type]['lead_days'][lead_day] = {
                     'stats': defaultStats.get(wx_type, SimpleError)(),
-                    'fcasts': {}
+                    'fcasts': {},
+                    'errors': {},
                 }
 
         return analyses
@@ -350,6 +361,8 @@ class FcastAnalysis(object):
                         error_val = wx_error_fns[wx_type](ob_val, fcast_val)
                         leaddays_obj[fcast.lead_days]['stats'] += error_val
                         self.analyses[wx_type]['cumulative_stats'] += error_val
+                        if error_val is not None and abs(error_val) > self.wx_types[wx_type]['error_threshold']:
+                            leaddays_obj[fcast.lead_days]['errors'][fcast.valid_time] = error_val
 
             self._get_wind_errors(ob, valid_fcasts)
             self._analyze_precip_chance(ob, valid_fcasts)
@@ -373,19 +386,23 @@ class FcastAnalysis(object):
                     if abs(error_dir) > 180:
                         error_dir = error_dir - math.copysign(360, error_dir)
 
-                    leaddays_obj = self.analyses['wind_dir']['lead_days'][fcast.lead_days]
-                    leaddays_obj['fcasts'][fcast.valid_time] = fcast_dir
-                    leaddays_obj['stats'] += error_dir
+                    leadday_obj = self.analyses['wind_dir']['lead_days'][fcast.lead_days]
+                    leadday_obj['fcasts'][fcast.valid_time] = fcast_dir
+                    leadday_obj['stats'] += error_dir
 
                     self.analyses['wind_dir']['cumulative_stats'] += error_dir
+                    if error_dir is not None and abs(error_dir) > self.wx_types['wind_dir']['error_threshold']:
+                        leadday_obj['errors'][fcast.valid_time] = error_dir
                 else:
                     # Adjust for non-observation of low speed winds
                     error_speed = 0.0 if fcast_speed < 1.6 else error_speed - 1.5
 
-                leaddays_obj = self.analyses['wind_speed']['lead_days'][fcast.lead_days]
-                leaddays_obj['fcasts'][fcast.valid_time] = fcast_speed
-                leaddays_obj['stats'] += error_speed
+                leadday_obj = self.analyses['wind_speed']['lead_days'][fcast.lead_days]
+                leadday_obj['fcasts'][fcast.valid_time] = fcast_speed
+                leadday_obj['stats'] += error_speed
                 self.analyses['wind_speed']['cumulative_stats'] += error_speed
+                if error_speed is not None and abs(error_speed) > self.wx_types['wind_speed']['error_threshold']:
+                    leadday_obj['errors'][fcast.valid_time] = error_speed
 
     def _get_cloud_cover_errors(self, ob, fcasts):
         cc_categories = {
@@ -396,6 +413,7 @@ class FcastAnalysis(object):
             'OVC': {'val': 3, 'ave_%': 90, 'ok_oktas': {'min': 6.5, 'max': 8}},
         }
         OKTA_TO_PERCENT = 100/8
+
         ob_layers = [cc_categories[layer] for layer in ob.observed_weather.cloud_cover.split(', ')]
         layers_max = max(ob_layers, key=lambda cc: cc['val'])
 
@@ -428,6 +446,8 @@ class FcastAnalysis(object):
 
             self.analyses['cloud_cover']['lead_days'][fcast.lead_days]['stats'] += error
             self.analyses['cloud_cover']['cumulative_stats'] += error
+            if error is not None and abs(error) > self.wx_types['cloud_cover']['error_threshold']:
+                self.analyses['cloud_cover']['lead_days'][fcast.lead_days]['errors'][fcast.valid_time] = error
 
     def _analyze_precip_chance(self, ob, fcasts):
         precip_terms = [
