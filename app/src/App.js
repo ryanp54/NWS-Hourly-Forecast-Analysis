@@ -158,19 +158,40 @@ const ForecastChart = ({ analysis, activeDay, onChange }) => {
         legendSymbol: { type: 'square' },
       }}
     >
-      {
-        activeDay
-          ? analysis.lead_days[activeDay].errors.map(
-            (errea, i) => (
-              <VictoryArea
-                  displayName={`Error-Area-${i}`}
-                  name={`Error-Area-${i}`}
-                  data={errea}
-                  key={`Error-Area-${i}`}
-              />
-            ),
-          )
-          : []
+      {activeDay
+        ? Object.entries(analysis.lead_days[activeDay].errors).reduce(
+            // Create data for error VictoryAreas and organize into contiguous areas. 
+            (erreas, [timeStr, amount]) => {
+              const time = new Date(timeStr);
+              const erreaDatum = {
+                x: time,
+                y: analysis.lead_days[activeDay].fcasts[timeStr],
+                y0: analysis.obs[timeStr],
+                amount,
+              };
+
+              const lastErrea = erreas.length > 0 ? erreas[erreas.length - 1] : false;
+              if (
+                lastErrea
+                && lastErrea.slice(-1)[0].x.valueOf() === time.valueOf() - 3600000
+              ) {
+                lastErrea.push(erreaDatum);
+              } else {
+                erreas.push([erreaDatum]);
+              }
+
+              return erreas
+            },
+            [],
+          ).map((errea, i) => (
+            <VictoryArea
+                displayName={`Error-Area-${i}`}
+                name={`Error-Area-${i}`}
+                data={errea}
+                key={`Error-Area-${i}`}
+            />
+          ))
+        : []
       }
     </VictoryGroup>
   );
@@ -449,17 +470,6 @@ function ActiveDataDisplay({ displayName, data }) {
     }
   });
 
-  if (!formattedErrorDatum) {
-    const fcasts = data.filter((point) => point.childName !== 'Actual');
-    const obs = data.filter((point) => point.childName === 'Actual');
-    if (fcasts.length === 1 && obs.length === 1) {
-      formattedErrorDatum = <LabeledValue
-          label='Forecast Error'
-          value={fcasts[0]._y - obs[0]._y}
-          key='Forecast Error'
-        />;
-    }
-  }
   if (formattedErrorDatum) {
     formattedData.push(formattedErrorDatum);
   }
@@ -507,11 +517,7 @@ function AnalysisPage() {
 
   // List of weather types Analysis chart is set-up to handle.
   // TODO: Finish all and refator to something more appropriate.
-  const workingWeathers = ['temperature', 'dewpoint', 'wind_speed'];
-
-  if (analysis) {
-    addErreaData(analysis);
-  }
+  const workingWeathers = ['temperature', 'dewpoint', 'wind_speed', 'cloud_cover'];
 
   return (
     <Container>
@@ -553,37 +559,6 @@ function AnalysisPage() {
         }
     </Container>
   );
-}
-
-function addErreaData(analysis) {
-  Object.values(analysis).forEach((data) => {
-    Object.entries(data.lead_days).forEach(([day, { fcasts }]) => {
-      const errors = [];
-      Object.entries(fcasts).forEach(([timeStr, value]) => {
-        const time = new Date(timeStr);
-        const ob = data.obs[timeStr];
-
-        if (ob && Math.abs(value - ob) > data.cumulative_stats.accuracy.error_threshold) {
-          const erreaDatum = {
-            x: time,
-            y: value,
-            y0: ob,
-            amount: value - ob,
-          };
-          const lastErrea = errors.length > 0 ? errors[errors.length - 1] : false;
-          if (
-            lastErrea
-            && lastErrea.slice(-1)[0].x.valueOf() === time.valueOf() - 3600000
-          ) {
-            lastErrea.push(erreaDatum);
-          } else {
-            errors.push([erreaDatum]);
-          }
-        }
-      });
-      data.lead_days[day].errors = errors;
-    });
-  });
 }
 
 export default AnalysisPage;
