@@ -21,6 +21,7 @@ appengine.monkeypatch()
 
 app = Flask(__name__)
 app.config['JSONIFY_PRETTYPRINT_REGULAR'] = True
+app.config['JSON_AS_ASCII'] = False
 
 nws_gridpoint = 'OAX/76,56'
 nws_station = 'KMLE'
@@ -89,6 +90,7 @@ def analyze_fcasts():
     start = request.args['start']
     end = request.args['end']
     fcast = FcastAnalysis(start, end)
+
     return jsonify(ast.literal_eval(str(fcast.analyses)))
 
 

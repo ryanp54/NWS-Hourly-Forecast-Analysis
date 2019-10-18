@@ -1,3 +1,5 @@
+# -*- coding: UTF-8 -*-
+
 __all__ = ['FcastAnalysis']
 
 import pdb
@@ -252,13 +254,13 @@ class FcastAnalysis(object):
         'temperature': {
             'prop_name': 'temperature',
             'display_name': 'Temperature',
-            'units': 'degrees C',
+            'units': u'\u00b0C',
             'error_threshold': 1.67
         },
         'dewpoint': {
             'prop_name': 'dewpoint',
             'display_name': 'Dewpoint',
-            'units': 'degrees C',
+            'units': u'\u00b0C',
             'error_threshold': 1.67
         },
         'precip_6hr': {
@@ -270,7 +272,7 @@ class FcastAnalysis(object):
         'cloud_cover': {
             'prop_name': 'cloud_cover',
             'display_name': 'Cloud Cover',
-            'units': '%',
+            'units': 'coverage categories',
             'error_threshold': 1
         },
         'wind_dir': {
@@ -282,7 +284,7 @@ class FcastAnalysis(object):
         'wind_speed': {
             'prop_name': 'wind_speed',
             'display_name': 'Wind Speed',
-            'units': 'knts',
+            'units': 'm/s',
             'error_threshold': 1.34
         },
         'precip_chance': {
