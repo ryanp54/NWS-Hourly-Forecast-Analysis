@@ -408,7 +408,7 @@ class FcastAnalysis(object):
 
     def _get_cloud_cover_errors(self, ob, fcasts):
         cc_categories = {
-            'VV': {'val': None, 'ok_oktas': {'min': 0.75, 'max': 8}},
+            'VV': {'val': 0, 'ok_oktas': {'min': 0.75, 'max': 8}},
             'CLR': {'val': 25, 'ok_oktas': {'min': 0, 'max': 2.5}},
             'SCT': {'val': 50, 'ok_oktas': {'min': 0.75, 'max': 5}},
             'BKN': {'val': 75, 'ok_oktas': {'min': 3.5, 'max': 7.5}},
@@ -427,16 +427,15 @@ class FcastAnalysis(object):
         for fcast in fcasts:
             fcast_percent = fcast.predicted_weather.cloud_cover
             error = 0
-            # Handle special 'VV' case.
-            if ob_details is None or ob_details['val'] is None:
+            # Check and handle special 'VV' case.
+            if ob_details['val'] == 0:
                 error = 0 if fcast_percent >= 0.75*OKTA_TO_PERCENT else 25
-            # Assign the forecasted category in a way that minimizes the
-            # error amount to avoid over punishing edge cases.
-            if fcast_percent < ob_details['ok_oktas']['min']*OKTA_TO_PERCENT:
+            # Otherwise assign the forecasted category in a way that minimizes
+            # the error amount to avoid over punishing edge cases.
+            elif fcast_percent < ob_details['ok_oktas']['min']*OKTA_TO_PERCENT:
                 for category in sorted(
                     cc_categories.values(),
-                    # Sort None case to last to make sure it is never reached.
-                    key=lambda cat: -cat['val'] if cat['val'] is not None else 1
+                    key=lambda cat: -cat['val']
                 ):
                     if fcast_percent >= category['ok_oktas']['min']*OKTA_TO_PERCENT:
                         error = category['val'] - ob_details['val']
@@ -445,19 +444,20 @@ class FcastAnalysis(object):
             elif fcast_percent > ob_details['ok_oktas']['max']*OKTA_TO_PERCENT:
                 for category in sorted(
                     cc_categories.values(),
-                    key=lambda cat: cat['val']
+                    # Sort VV case to last to make sure it is never reached.
+                    key=lambda cat: cat['val'] if cat['val'] != 0 else 101
                 ):
-                    if fcast_percent <= category['ok_oktas']['max']*OKTA_TO_PERCENT and category['val'] is not None:
+                    if fcast_percent <= category['ok_oktas']['max']*OKTA_TO_PERCENT:
                         error = category['val'] - ob_details['val']
 
                         break
 
             self.analyses['cloud_cover']['lead_days'][fcast.lead_days]['fcasts'][
-                fcast.valid_time] = ob_details['val']
+                fcast.valid_time] = ob_details['val'] + error
             self.analyses['cloud_cover']['lead_days'][fcast.lead_days]['stats'] += error
             self.analyses['cloud_cover']['cumulative_stats'] += error
 
-            if (error is not None 
+            if (error is not None
                     and abs(error) > self.wx_types['cloud_cover']['error_threshold']):
                 self.analyses['cloud_cover']['lead_days'][fcast.lead_days]['errors'][
                     fcast.valid_time] = error
