@@ -159,8 +159,9 @@ const ForecastChart = ({ analysis, activeDay, onChange }) => {
       }}
     >
       {activeDay
-        ? Object.entries(analysis.lead_days[activeDay].errors).reduce(
-            // Create data for error VictoryAreas and organize into contiguous areas. 
+        ? (
+          Object.entries(analysis.lead_days[activeDay].errors).reduce(
+            // Create data for error VictoryAreas and organize into contiguous areas.
             (erreas, [timeStr, amount]) => {
               const time = new Date(timeStr);
               const erreaDatum = {
@@ -180,7 +181,7 @@ const ForecastChart = ({ analysis, activeDay, onChange }) => {
                 erreas.push([erreaDatum]);
               }
 
-              return erreas
+              return erreas;
             },
             [],
           ).map((errea, i) => (
@@ -191,6 +192,7 @@ const ForecastChart = ({ analysis, activeDay, onChange }) => {
                 key={`Error-Area-${i}`}
             />
           ))
+        )
         : []
       }
     </VictoryGroup>
@@ -320,7 +322,7 @@ const ForecastChart = ({ analysis, activeDay, onChange }) => {
               grid: { stroke: 'grey' },
               tickLabels: { fontSize: 12 },
             }}
-            label='°C'
+            label={analysis.metadata.units}
             axisLabelComponent={<VictoryLabel dx={-15} angle={0} />}
           />
 
@@ -354,6 +356,7 @@ function ErrorStatsDisplay({ analysis, activeDay }) {
                     <LabeledValue
                      label={type}
                      value={stats[type][prop]}
+                     units={analysis.metadata.units}
                      key={prop}
                    />
                   );
@@ -412,7 +415,7 @@ function AnalysisChart({ analysis }) {
       </Row>
       <Row>
         <ActiveDataDisplay
-          displayName={analysis.metadata.display_name}
+          displayInfo={analysis.metadata}
           data={activeData}
         />
       </Row>
@@ -437,7 +440,7 @@ function toTitleCase(str) {
 
 /* * * Current Data Detail Display * * */
 
-function ActiveDataDisplay({ displayName, data }) {
+function ActiveDataDisplay({ displayInfo, data }) {
   if (!data || data.length === 0) {
     return '';
   }
@@ -457,6 +460,7 @@ function ActiveDataDisplay({ displayName, data }) {
         <LabeledValue
           label={datum.childName}
           value={datum._y}
+          units={displayInfo.units}
           key={datum.childName}
         />,
       );
@@ -464,6 +468,7 @@ function ActiveDataDisplay({ displayName, data }) {
       formattedErrorDatum = <LabeledValue
           label='Forecast Error'
           value={datum.amount}
+          units={displayInfo.units}
           key='Forecast Error'
           className='text-danger'
         />;
@@ -478,7 +483,7 @@ function ActiveDataDisplay({ displayName, data }) {
     <Container className='h6 font-weight-normal'>
       <Row className='d-flex justify-content-center pb-2'>
         <Col>
-           {`${displayName} on ${date} at ${time}`}
+           {`${displayInfo.display_name} on ${date} at ${time}`}
          </Col>
       </Row>
       <Row>
@@ -489,16 +494,16 @@ function ActiveDataDisplay({ displayName, data }) {
 }
 
 function LabeledValue({
-  label, value, type, className,
+  label, value, type, units, className,
 }) {
-  const formatForDisplay = (val, units) => `${Math.round(val * 10) / 10}${units}`;
+  const formatForDisplay = (val, unit) => `${Math.round(val * 10) / 10} ${unit}`;
   const valueType = (type || label).toLowerCase();
 
   let formattedValue;
   if (valueType === 'accuracy') {
     formattedValue = formatForDisplay(value * 100.0, '%');
   } else {
-    formattedValue = formatForDisplay(value, '°C');
+    formattedValue = formatForDisplay(value, units);
   }
   return (
     <span className={`mr-3 d-inline-block ${className}`}>
@@ -517,7 +522,7 @@ function AnalysisPage() {
 
   // List of weather types Analysis chart is set-up to handle.
   // TODO: Finish all and refator to something more appropriate.
-  const workingWeathers = ['temperature', 'dewpoint', 'wind_speed', 'cloud_cover'];
+  const workingWeathers = ['temperature', 'dewpoint', 'wind_speed', 'cloud_cover', 'precip_6hr'];
 
   return (
     <Container>
