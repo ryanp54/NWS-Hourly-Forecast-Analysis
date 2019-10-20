@@ -108,11 +108,13 @@ function DateRangeForm({ onFetch }) {
   );
 }
 
-const ForecastChart = ({ analysis, activeDay, onChange }) => {
+function getActiveFcastsAndChartedData(analysis, activeDay) {
+  const chartedData = [];
   const activeFcasts = activeDay ? [activeDay] : Object.keys(analysis.lead_days);
 
-  const displayedFcastLines = (
-    <VictoryGroup displayName='Forecast' color='red'>
+  // Add forecasts lines
+  chartedData.push(
+    <VictoryGroup displayName='Forecast' key='Forecast' color='red'>
       {
         activeFcasts.map((leadDay, i) => (
           <VictoryLine
@@ -130,12 +132,12 @@ const ForecastChart = ({ analysis, activeDay, onChange }) => {
           />
         ))
       }
-    </VictoryGroup>
+    </VictoryGroup>,
   );
 
-
-  const observedLine = (
-    <VictoryGroup displayName='Actual' color='black'>
+  // Add observed weather line
+  chartedData.push(
+    <VictoryGroup displayName='Actual' key='Actual' color='black'>
       <VictoryLine
         displayName='Actual'
         name='Actual'
@@ -143,12 +145,51 @@ const ForecastChart = ({ analysis, activeDay, onChange }) => {
         x={(datum) => new Date(datum[0])}
         y={1}
       />
-    </VictoryGroup>
+    </VictoryGroup>,
   );
 
-  const displayedErrea = (
+  const erreas = [];
+  if (activeDay) {
+    erreas.push(
+      ...Object.entries(analysis.lead_days[activeDay].errors).reduce(
+        // Create data for error VictoryAreas and organize into contiguous areas.
+        (erreas, [timeStr, amount]) => {
+          const time = new Date(timeStr);
+          const erreaDatum = {
+            x: time,
+            y: analysis.lead_days[activeDay].fcasts[timeStr],
+            y0: analysis.obs[timeStr],
+            amount,
+          };
+
+          const lastErrea = erreas.length > 0 ? erreas[erreas.length - 1] : false;
+          if (
+            lastErrea
+            && lastErrea.slice(-1)[0].x.valueOf() === time.valueOf() - 3600000
+          ) {
+            lastErrea.push(erreaDatum);
+          } else {
+            erreas.push([erreaDatum]);
+          }
+
+          return erreas;
+        },
+        [],
+      ).map((errea, i) => (
+        <VictoryArea
+            displayName={`Error-Area-${i}`}
+            name={`Error-Area-${i}`}
+            data={errea}
+            key={`Error-Area-${i}`}
+        />
+      )),
+    );
+  }
+
+  // Add error areas.
+  chartedData.push(
     <VictoryGroup
-      displayName='Error'
+      displayName='Error' key='Error'
       style={{
         data: {
           opacity: 0.4,
@@ -158,50 +199,25 @@ const ForecastChart = ({ analysis, activeDay, onChange }) => {
         legendSymbol: { type: 'square' },
       }}
     >
-      {activeDay
-        ? (
-          Object.entries(analysis.lead_days[activeDay].errors).reduce(
-            // Create data for error VictoryAreas and organize into contiguous areas.
-            (erreas, [timeStr, amount]) => {
-              const time = new Date(timeStr);
-              const erreaDatum = {
-                x: time,
-                y: analysis.lead_days[activeDay].fcasts[timeStr],
-                y0: analysis.obs[timeStr],
-                amount,
-              };
-
-              const lastErrea = erreas.length > 0 ? erreas[erreas.length - 1] : false;
-              if (
-                lastErrea
-                && lastErrea.slice(-1)[0].x.valueOf() === time.valueOf() - 3600000
-              ) {
-                lastErrea.push(erreaDatum);
-              } else {
-                erreas.push([erreaDatum]);
-              }
-
-              return erreas;
-            },
-            [],
-          ).map((errea, i) => (
-            <VictoryArea
-                displayName={`Error-Area-${i}`}
-                name={`Error-Area-${i}`}
-                data={errea}
-                key={`Error-Area-${i}`}
-            />
-          ))
-        )
-        : []
-      }
-    </VictoryGroup>
+      {erreas}
+    </VictoryGroup>,
   );
 
-  const legendData = [
+  return [activeFcasts, chartedData];
+}
+
+function getLegendData(analysis, chartedGroups) {
+  const legendData = [];
+  const forecastGroup = chartedGroups.find((group) => group.props.displayName === 'Forecast');
+  const otherGroups = chartedGroups.filter((group) => group.props.displayName !== 'Forecast');
+
+  // Always add all forcasts available so they can be clicked to be activated.
+  legendData.push(
     ...Object.keys(analysis.lead_days).map((day) => {
       const dayLabel = `${day}-Day`;
-      const line = displayedFcastLines.props.children.find(
+
+      // Find line if forecast lead-day is displayed and record styles to use.
+      const line = forecastGroup.props.children.find(
         (child) => child.props.name === dayLabel,
       );
       const style = line && { ...line.props.theme.line.style, ...line.props.style };
@@ -210,7 +226,7 @@ const ForecastChart = ({ analysis, activeDay, onChange }) => {
         name: `${day}-Day`,
         symbol: {
           opacity: line ? style.data.opacity : 0.1,
-          fill: displayedFcastLines.props.color,
+          fill: forecastGroup.props.color,
           cursor: 'pointer',
         },
         labels: {
@@ -219,7 +235,12 @@ const ForecastChart = ({ analysis, activeDay, onChange }) => {
         },
       };
     }),
-    ...[observedLine, displayedErrea].map(
+  );
+
+  // Add other groups and style as active or inactive based on weather the actually have any
+  // charted data.
+  legendData.push(
+    ...otherGroups.map(
       (group) => {
         const style = { ...group.props.theme.line.style, ...group.props.style };
         const isCharted = group.props.children.length !== 0;
@@ -237,8 +258,15 @@ const ForecastChart = ({ analysis, activeDay, onChange }) => {
           },
         };
       },
-    ).filter(Boolean),
-  ];
+    ),
+  );
+
+  return legendData;
+}
+
+const ForecastChart = ({ analysis, activeDay, onChange }) => {
+  const [activeFcasts, chartedData] = getActiveFcastsAndChartedData(analysis, activeDay);
+  const legendData = getLegendData(analysis, chartedData);
 
   const toggleDisplayed = (labelName) => {
     const allFcastDays = Object.keys(analysis.lead_days);
@@ -326,9 +354,7 @@ const ForecastChart = ({ analysis, activeDay, onChange }) => {
             axisLabelComponent={<VictoryLabel dx={-15} angle={0} />}
           />
 
-          {displayedErrea}
-          {displayedFcastLines}
-          {observedLine}
+          {chartedData}
 
         </VictoryChart>
       </Row>
