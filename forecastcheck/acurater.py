@@ -350,6 +350,8 @@ class FcastAnalysis(object):
 
             for wx_type in wx_error_fns.keys():
                 ob_val = getattr(ob.observed_weather, wx_type)
+                if wx_type == 'precip_6hr' and ob_val < 0:
+                    ob_val = None
                 self.analyses[wx_type]['obs'][ob.time] = ob_val
 
                 leaddays_obj = self.analyses[wx_type]['lead_days']
