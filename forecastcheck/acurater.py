@@ -348,7 +348,7 @@ class FcastAnalysis(object):
             'temperature': lambda ob, fcast: fcast - ob,
             'dewpoint': lambda ob, fcast: fcast - ob,
             'precip_6hr': lambda ob, fcast: (
-                fcast - (ob*MM_PER_M) if fcast + ob > 0 else None
+                fcast - ob if fcast + ob > 0 else None
             ),
         }
 
@@ -359,20 +359,29 @@ class FcastAnalysis(object):
 
             for wx_type in wx_error_fns.keys():
                 ob_val = getattr(ob.observed_weather, wx_type)
-                if wx_type == 'precip_6hr' and ob_val < 0:
-                    ob_val = None
-                self.analyses[wx_type]['obs'][ob.time] = ob_val
+
+                if wx_type == 'precip_6hr':
+                    ob_val = ob_val*MM_PER_M
+                    if ob_val >= 0:
+                        self.analyses[wx_type]['obs'][ob.time] = ob_val
+                else:
+                    self.analyses[wx_type]['obs'][ob.time] = ob_val
 
                 leaddays_obj = self.analyses[wx_type]['lead_days']
                 for fcast in valid_fcasts:
                     fcast_val = getattr(fcast.predicted_weather, wx_type)
-                    leaddays_obj[fcast.lead_days]['fcasts'][fcast.valid_time] = fcast_val
+
+                    if fcast_val is not None:
+                        leaddays_obj[fcast.lead_days]['fcasts'][
+                            fcast.valid_time] = fcast_val
 
                     if fcast_val is not None and ob_val is not None:
                         error_val = wx_error_fns[wx_type](ob_val, fcast_val)
+
                         leaddays_obj[fcast.lead_days]['stats'] += error_val
                         self.analyses[wx_type]['cumulative_stats'] += error_val
-                        if error_val is not None and abs(error_val) > self.wx_types[wx_type]['error_threshold']:
+                        if (error_val is not None
+                                and abs(error_val) > self.wx_types[wx_type]['error_threshold']):
                             leaddays_obj[fcast.lead_days]['errors'][fcast.valid_time] = error_val
 
             self._get_wind_errors(ob, valid_fcasts)
