@@ -194,22 +194,20 @@ class SimpleError(object):
 
 class BinCount(object):
     """TODO: Docstring for BinCount"""
-    def __init__(self, bins=None, predicted_n=0.0):
+    def __init__(self, bins=None):
         self.bins = bins if bins else {
-            0: 0,
-            10: 0,
-            20: 0,
-            30: 0,
-            40: 0,
-            50: 0,
-            60: 0,
-            70: 0,
-            80: 0,
-            80: 0,
-            100: 0
+            0: {'fcasts': 0, 'obs': 0},
+            10: {'fcasts': 0, 'obs': 0},
+            20: {'fcasts': 0, 'obs': 0},
+            30: {'fcasts': 0, 'obs': 0},
+            40: {'fcasts': 0, 'obs': 0},
+            50: {'fcasts': 0, 'obs': 0},
+            60: {'fcasts': 0, 'obs': 0},
+            70: {'fcasts': 0, 'obs': 0},
+            80: {'fcasts': 0, 'obs': 0},
+            90: {'fcasts': 0, 'obs': 0},
+            100: {'fcasts': 0, 'obs': 0}
         }
-        self._ob_n = sum(self.bins.values())
-        self._predicted_n = predicted_n
 
     def __str__(self):
         return str(self.bins)
@@ -220,30 +218,41 @@ class BinCount(object):
             self.bias()
         )
 
+    def get_ob_n(self):
+        return sum([value['fcasts'] for value in self.bins.values()])
+
+    def get_predicted_n(self):
+        return sum(
+            [(key/100.0)*value['fcasts'] for key, value in self.bins.items()])
+
     def reg_ob(self, value):
-        self.reg_predicted(value)
         for bin_ in sorted(self.bins):
             if value <= bin_:
-                self.bins[bin_] += 1
-                self._ob_n += 1
+                self.bins[bin_]['obs'] += 1
+                self.bins[bin_]['fcasts'] += 1
                 break
 
     def rem_ob(self, value):
-        self.rem_predicted(value)
         for bin_ in sorted(self.bins):
             if value <= bin_:
-                self.bins[bin_] -= 1
-                self._ob_n -= 1
+                self.bins[bin_]['obs'] -= 1
+                self.bins[bin_]['fcasts'] -= 1
                 break
 
     def reg_predicted(self, value):
-        self._predicted_n += value/100.0
+        for bin_ in sorted(self.bins):
+            if value <= bin_:
+                self.bins[bin_]['fcasts'] += 1
+                break
 
     def rem_predicted(self, value):
-        self._predicted_n -= value/100.0
+        for bin_ in sorted(self.bins):
+            if value <= bin_:
+                self.bins[bin_]['fcasts'] -= 1
+                break
 
     def bias(self):
-        return self._predicted_n/self._ob_n if self._ob_n != 0 else 0
+        return self.get_predicted_n()/self.get_ob_n() if self.get_ob_n() != 0 else 0
 
 
 class FcastAnalysis(object):
