@@ -1,4 +1,3 @@
-import logging
 import pdb
 import ast
 
@@ -6,17 +5,14 @@ from functools import wraps
 from datetime import date, datetime, timedelta
 
 from forecastcheck.ndb_setup import (
-    RawForecast, RawObservation, Weather, Observation, Forecast, RecordError)
-from forecastcheck.nws_parse import GridData, ObservationData, _iso2datetime
+    RawForecast, RawObservation, Forecast, RecordError)
+from forecastcheck.nws_parse import GridData, ObservationData
 from forecastcheck.acurater import FcastAnalysis
 
 from requests import get
-from google.appengine.ext import ndb
-from flask import (
-    Flask, request, send_from_directory, redirect, url_for, jsonify,
-    make_response, current_app)
-
+from flask import Flask, request, send_from_directory, jsonify
 from requests_toolbelt.adapters import appengine
+
 appengine.monkeypatch()
 
 app = Flask(__name__)

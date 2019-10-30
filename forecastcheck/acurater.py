@@ -1,263 +1,19 @@
 __all__ = ['FcastAnalysis']
 
-import pdb
 import math
-import copy
-from datetime import datetime, timedelta
 
-from google.appengine.ext import ndb
-
-from forecastcheck.ndb_setup import Weather, Observation, Forecast
-
-MM_PER_M = 1000
-
-
-class AveError(object):
-    """TODO"""
-    def __init__(self, error=0.0, n=0):
-        self.error = error
-        self.n = n
-
-    def __str__(self):
-        return str(self.error)
-
-    def __repr__(self):
-        return '{0.__dict__}'.format(self)
-
-    def __add__(self, addend):
-        if addend is not None:
-            add_n = addend.n if isinstance(addend, AveError) else 1
-            error = addend.error if isinstance(addend, AveError) else addend
-            total_abs_error = self.error*self.n + abs(error)*add_n
-            total_n = self.n + add_n
-            return self if total_n == 0 else AveError(
-                total_abs_error/total_n, total_n)
-        else:
-            return self
-
-    def __sub__(self, subtrahend):
-        if subtrahend is not None:
-            is_ave_error = isinstance(subtrahend, AveError)
-            sub_n = subtrahend.n if is_ave_error else 1
-            error = subtrahend.error if is_ave_error else subtrahend
-            total_abs_error = self.error*self.n - abs(error)*sub_n
-            if total_abs_error < 0:
-                raise ValueError(
-                    'AveError subtraction resulted in a negative total error.')
-            total_n = self.n - sub_n
-            return self if total_n == 0 else AveError(
-                total_abs_error/total_n, total_n)
-        else:
-            return self
-
-
-class Bias(object):
-    """TODO: docstring for Bias"""
-    def __init__(self, bias=0.0, n=0):
-        self.bias = bias
-        self.n = n
-
-    def __str__(self):
-        return str(self.bias)
-
-    def __repr__(self):
-        return '{0.__dict__}'.format(self)
-
-    def __add__(self, addend):
-        if addend is not None:
-            add_n = addend.n if isinstance(addend, Bias) else 1
-            bias = addend.bias if isinstance(addend, Bias) else addend
-            total_bias = self.bias*self.n + bias*add_n
-            n = self.n + add_n
-            return self if n == 0 else Bias(total_bias/n, n)
-        else:
-            return self
-
-    def __sub__(self, subtrahend):
-        if subtrahend is not None:
-            is_bias = isinstance(subtrahend, Bias)
-            sub_n = subtrahend.n if is_bias else 1
-            bias = subtrahend.bias if is_bias else subtrahend
-            total_bias = self.bias*self.n - bias*sub_n
-            n = self.n - sub_n
-            return Bias() if n == 0 else Bias(total_bias/n, n)
-        else:
-            return self
-
-
-class Accuracy(object):
-    """TODO: docstring for Accuracy"""
-    def __init__(self, error_threshold=0, accuracy=0.0, n=0):
-        self.error_threshold = error_threshold
-        self.accuracy = accuracy
-        self.n = n
-
-    def __str__(self):
-        return str(self.accuracy)
-
-    def __repr__(self):
-        return '{0.__dict__}'.format(self)
-
-    def __add__(self, addend):
-        if isinstance(addend, Accuracy):
-            n = self.n + addend.n
-            if n > 0:
-                accuracy = (self.accuracy*self.n + addend.accuracy*addend.n)/n
-            else:
-                accuracy = self.accuracy
-            return Accuracy(self.error_threshold, accuracy, n)
-        elif addend is not None:
-            n = self.n + 1
-            if abs(addend) <= self.error_threshold:
-                accuracy = (self.accuracy*self.n + 1)/n
-            else:
-                accuracy = self.accuracy*self.n/n
-            return Accuracy(self.error_threshold, accuracy, n)
-        else:
-            return self
-
-    def __sub__(self, subtrahend):
-        if isinstance(subtrahend, Accuracy):
-            n = self.n - subtrahend.n
-            if n == 0:
-                accuracy = 0.0
-            else:
-                accuracy = (self.accuracy*self.n
-                            - subtrahend.accuracy*subtrahend.n)/n
-        elif subtrahend is not None:
-            n = self.n - 1
-            if n == 0:
-                accuracy = 0.0
-            elif abs(subtrahend) <= self.error_threshold:
-                accuracy = (self.accuracy*self.n - 1)/n
-            else:
-                accuracy = self.accuracy*self.n/n
-        else:
-            return self
-
-        return Accuracy(self.error_threshold, accuracy, n)
-
-
-class SimpleError(object):
-    """TODO: docstring for SimpleError"""
-    def __init__(
-        self,
-        ave_error=None,
-        bias=None,
-        accuracy=None,
-        error_threshold=0
-    ):
-        self.ave_error = ave_error or AveError()
-        self.bias = bias or Bias()
-        self.accuracy = accuracy or Accuracy(error_threshold)
-
-    def __str__(self):
-        return (
-            '{{error: {0.ave_error!s},'
-            ' bias: {0.bias!s},'
-            ' accuracy: {0.accuracy!r}}}'
-        ).format(self)
-
-    def __repr__(self):
-        return '{0.__dict__}'.format(self)
-
-    def __add__(self, addend):
-        if isinstance(addend, SimpleError):
-            new_value = SimpleError(
-                self.ave_error + addend.ave_error,
-                self.bias + addend.bias,
-                self.accuracy + addend.accuracy
-            )
-        else:
-            new_value = SimpleError(
-                self.ave_error + addend,
-                self.bias + addend,
-                self.accuracy + addend
-            )
-        return new_value
-
-    def __sub__(self, subtrahend):
-        if isinstance(subtrahend, SimpleError):
-            new_value = SimpleError(
-                self.ave_error - subtrahend.ave_error,
-                self.bias - subtrahend.bias,
-                self.accuracy - subtrahend.accuracy
-            )
-        else:
-            new_value = SimpleError(
-                self.ave_error - subtrahend,
-                self.bias - subtrahend,
-                self.accuracy - subtrahend
-            )
-        return new_value
-
-
-class BinCount(object):
-    """TODO: Docstring for BinCount"""
-    def __init__(self, bins=None):
-        self.bins = bins if bins else {
-            0: {'fcasts': 0, 'obs': 0},
-            10: {'fcasts': 0, 'obs': 0},
-            20: {'fcasts': 0, 'obs': 0},
-            30: {'fcasts': 0, 'obs': 0},
-            40: {'fcasts': 0, 'obs': 0},
-            50: {'fcasts': 0, 'obs': 0},
-            60: {'fcasts': 0, 'obs': 0},
-            70: {'fcasts': 0, 'obs': 0},
-            80: {'fcasts': 0, 'obs': 0},
-            90: {'fcasts': 0, 'obs': 0},
-            100: {'fcasts': 0, 'obs': 0}
-        }
-
-    def __str__(self):
-        return str(self.bins)
-
-    def __repr__(self):
-        return "{{'bin_count': {{'bins': {0}, 'bias': {1}}}}}".format(
-            {'{}'.format(k): v for k, v in sorted(self.bins.items())},
-            self.bias()
-        )
-
-    def get_ob_n(self):
-        return sum([value['obs'] for value in self.bins.values()])
-
-    def get_predicted_n(self):
-        return sum(
-            [(key/100.0)*value['fcasts'] for key, value in self.bins.items()])
-
-    def reg_ob(self, value):
-        for bin_ in sorted(self.bins):
-            if value <= bin_:
-                self.bins[bin_]['obs'] += 1
-                self.bins[bin_]['fcasts'] += 1
-                break
-
-    def rem_ob(self, value):
-        for bin_ in sorted(self.bins):
-            if value <= bin_:
-                self.bins[bin_]['obs'] -= 1
-                self.bins[bin_]['fcasts'] -= 1
-                break
-
-    def reg_predicted(self, value):
-        for bin_ in sorted(self.bins):
-            if value <= bin_:
-                self.bins[bin_]['fcasts'] += 1
-                break
-
-    def rem_predicted(self, value):
-        for bin_ in sorted(self.bins):
-            if value <= bin_:
-                self.bins[bin_]['fcasts'] -= 1
-                break
-
-    def bias(self):
-        return (100*self.get_predicted_n()/self.get_ob_n() - 100
-                if self.get_ob_n() != 0 else 0)
+from forecastcheck.ndb_setup import Observation, Forecast
+from forecastcheck.stats import SimpleError, BinCount
 
 
 class FcastAnalysis(object):
-    """TODO: docstring"""
+    """Create a forecast accuracy analysis.
+
+    Attributes:
+        analyses (abject): The analysis results.
+    """
+
+    # Details of supported weather types.
     wx_types = {
         'temperature': {
             'prop_name': 'temperature',
@@ -303,16 +59,30 @@ class FcastAnalysis(object):
     }
 
     def __init__(self, start_t, end_t='9999-12-31', valid_lead_ds=range(1, 8)):
+        """Retrieve and analyze forecasts.
+
+        Retrieve the relevant observation and forecast data. Calculate various
+        statistics to analyze the accuracy of the forecast for various waether
+        types and record along with the forecast and observation data. For
+        probablistic forecasts only record the bin count information.
+
+        Args:
+            start_t (str): Start date of range for analysis (YYYY-MM-DD).
+            end_t (str, optional): End date of range for analysis (YYYY-MM-DD).
+            valid_lead_ds (list of int, optional): Valid forecast lead days.
+
+        """
         obs = Observation.query(
             Observation.time >= start_t,
             Observation.time <= end_t
         ).fetch()
 
-        self.analyses = self._init_analyses(valid_lead_ds)
+        self._init_analyses(valid_lead_ds)
         self._analyze(obs)
 
     def _init_analyses(self, valid_lead_ds):
 
+        # TODO: See if this can be simplified.
         def make_statfn(error_threshold):
             def fn():
                 if error_threshold is not None:
@@ -321,6 +91,7 @@ class FcastAnalysis(object):
                     return BinCount()
             return fn
 
+        # Dictionary of functions to generate the initial stats objects.
         defaultStats = {
             wx_type: make_statfn(data.get('error_threshold'))
             for wx_type, data in self.wx_types.items()
@@ -342,9 +113,20 @@ class FcastAnalysis(object):
                     'errors': {},
                 }
 
-        return analyses
+        self.analyses = analyses
 
     def _analyze(self, obs):
+        for ob in obs:
+            valid_fcasts = Forecast.query(
+                Forecast.valid_time == ob.time
+            ).fetch()
+
+            self._get_basic_errors(ob, valid_fcasts)
+            self._get_wind_errors(ob, valid_fcasts)
+            self._analyze_precip_chance(ob, valid_fcasts)
+            self._get_cloud_cover_errors(ob, valid_fcasts)
+
+    def _get_basic_errors(self, ob, fcasts):
         wx_error_fns = {
             'temperature': lambda ob, fcast: fcast - ob,
             'dewpoint': lambda ob, fcast: fcast - ob,
@@ -352,78 +134,98 @@ class FcastAnalysis(object):
                 fcast - ob if fcast + ob > 0 else None
             ),
         }
+        MM_PER_M = 1000
 
-        for ob in obs:
-            valid_fcasts = Forecast.query(
-                Forecast.valid_time == ob.time
-            ).fetch()
+        for wx_type, wx_fn in wx_error_fns.items():
+            ob_val = getattr(ob.observed_weather, wx_type)
 
-            for wx_type in wx_error_fns.keys():
-                ob_val = getattr(ob.observed_weather, wx_type)
-
-                if wx_type == 'precip_6hr':
-                    ob_val = ob_val*MM_PER_M
-                    if ob_val >= 0:
-                        self.analyses[wx_type]['obs'][ob.time] = ob_val
-                else:
+            # Special conversion and non-recording of negative values
+            # necessary for precip amounts.
+            if wx_type == 'precip_6hr':
+                ob_val = ob_val*MM_PER_M
+                if ob_val >= 0:
                     self.analyses[wx_type]['obs'][ob.time] = ob_val
+            else:
+                self.analyses[wx_type]['obs'][ob.time] = ob_val
 
-                leaddays_obj = self.analyses[wx_type]['lead_days']
-                for fcast in valid_fcasts:
-                    fcast_val = getattr(fcast.predicted_weather, wx_type)
+            error_threshold = self.wx_types[wx_type]['error_threshold']
+            leaddays_obj = self.analyses[wx_type]['lead_days']
+            for fcast in fcasts:
+                fcast_val = getattr(fcast.predicted_weather, wx_type)
 
-                    if fcast_val is not None:
-                        leaddays_obj[fcast.lead_days]['fcasts'][
-                            fcast.valid_time] = fcast_val
+                if fcast_val is not None:
+                    leaddays_obj[fcast.lead_days]['fcasts'][
+                        fcast.valid_time] = fcast_val
 
-                    if fcast_val is not None and ob_val is not None:
-                        error_val = wx_error_fns[wx_type](ob_val, fcast_val)
+                if fcast_val is not None and ob_val is not None:
+                    error_val = wx_fn(ob_val, fcast_val)
 
-                        leaddays_obj[fcast.lead_days]['stats'] += error_val
-                        self.analyses[wx_type]['cumulative_stats'] += error_val
-                        if (error_val is not None
-                                and abs(error_val) > self.wx_types[wx_type]['error_threshold']):
-                            leaddays_obj[fcast.lead_days]['errors'][fcast.valid_time] = error_val
+                    leaddays_obj[fcast.lead_days]['stats'] += error_val
+                    self.analyses[wx_type]['cumulative_stats'] += error_val
 
-            self._get_wind_errors(ob, valid_fcasts)
-            self._analyze_precip_chance(ob, valid_fcasts)
-            self._get_cloud_cover_errors(ob, valid_fcasts)
+                    if (
+                        error_val is not None
+                        and abs(error_val) > error_threshold
+                    ):
+                        leaddays_obj[fcast.lead_days]['errors'][
+                            fcast.valid_time] = error_val
 
     def _get_wind_errors(self, ob, fcasts):
         ob_speed = ob.observed_weather.wind_speed
         ob_dir = ob.observed_weather.wind_dir
         if ob_speed is not None:
             self.analyses['wind_speed']['obs'][ob.time] = ob_speed
+
+            # ob_dir is only valid if ob_speed > 0
             if ob_speed > 0:
                 self.analyses['wind_dir']['obs'][ob.time] = ob_dir
 
+            dir_threshold = self.wx_types['wind_dir']['error_threshold']
+            speed_threshold = self.wx_types['wind_speed']['error_threshold']
             for fcast in fcasts:
                 fcast_speed = fcast.predicted_weather.wind_speed
                 fcast_dir = fcast.predicted_weather.wind_dir
                 error_speed = fcast_speed - ob_speed
+
                 if ob_speed > 0:
-                    # wind_dir observation is only valid if wind_speed > 0
                     error_dir = fcast_dir - ob_dir
+                    # Correct error when it should be measured across the
+                    # 360/0 degree boundry instead.
                     if abs(error_dir) > 180:
                         error_dir = error_dir - math.copysign(360, error_dir)
 
-                    leadday_obj = self.analyses['wind_dir']['lead_days'][fcast.lead_days]
-                    leadday_obj['fcasts'][fcast.valid_time] = fcast_dir
-                    leadday_obj['stats'] += error_dir
+                    leadday_dir = self.analyses['wind_dir']['lead_days'][
+                        fcast.lead_days]
 
+                    leadday_dir['fcasts'][fcast.valid_time] = fcast_dir
+                    leadday_dir['stats'] += error_dir
                     self.analyses['wind_dir']['cumulative_stats'] += error_dir
-                    if error_dir is not None and abs(error_dir) > self.wx_types['wind_dir']['error_threshold']:
-                        leadday_obj['errors'][fcast.valid_time] = error_dir
+
+                    if (
+                        error_dir is not None
+                        and abs(error_dir) > dir_threshold
+                    ):
+                        leadday_dir['errors'][fcast.valid_time] = error_dir
+
                 else:
                     # Adjust for non-observation of low speed winds
-                    error_speed = 0.0 if fcast_speed < 1.6 else error_speed - 1.5
+                    if fcast_speed < 1.5:
+                        error_speed = 0.0
+                    else:
+                        error_speed = error_speed - 1.4
 
-                leadday_obj = self.analyses['wind_speed']['lead_days'][fcast.lead_days]
-                leadday_obj['fcasts'][fcast.valid_time] = fcast_speed
-                leadday_obj['stats'] += error_speed
+                leadday_speed = self.analyses['wind_speed']['lead_days'][
+                    fcast.lead_days]
+
+                leadday_speed['fcasts'][fcast.valid_time] = fcast_speed
+                leadday_speed['stats'] += error_speed
                 self.analyses['wind_speed']['cumulative_stats'] += error_speed
-                if error_speed is not None and abs(error_speed) > self.wx_types['wind_speed']['error_threshold']:
-                    leadday_obj['errors'][fcast.valid_time] = error_speed
+
+                if (
+                    error_speed is not None
+                    and abs(error_speed) > speed_threshold
+                ):
+                    leadday_speed['errors'][fcast.valid_time] = error_speed
 
     def _get_cloud_cover_errors(self, ob, fcasts):
         cc_categories = {
@@ -433,53 +235,59 @@ class FcastAnalysis(object):
             'BKN': {'val': 75, 'ok_oktas': {'min': 3.5, 'max': 7.5}},
             'OVC': {'val': 100, 'ok_oktas': {'min': 6.5, 'max': 8}},
         }
-        OKTA_TO_PERCENT = 100/8
+        OKTA2PERCENT = 100/8
 
         ob_val = ob.observed_weather.cloud_cover
+
         if ob_val is None:
             return
 
         ob_layers = [cc_categories[layer] for layer in ob_val.split(', ')]
         ob_details = max(ob_layers, key=lambda cc: cc['val'])
 
+        error_threshold = self.wx_types['cloud_cover']['error_threshold']
         self.analyses['cloud_cover']['obs'][ob.time] = ob_details['val']
         for fcast in fcasts:
             fcast_percent = fcast.predicted_weather.cloud_cover
             error = 0
-            # Check and handle special 'VV' case.
-            if ob_details['val'] == 0:
-                error = 0 if fcast_percent >= 0.75*OKTA_TO_PERCENT else 25
+
+            # Check and handle special 'VV' case. This case means there is
+            # cloud cover but of an unkown coverage amount.
             # Otherwise assign the forecasted category in a way that minimizes
             # the error amount to avoid over punishing edge cases.
-            elif fcast_percent < ob_details['ok_oktas']['min']*OKTA_TO_PERCENT:
+            if ob_details['val'] == 0:
+                error = 0 if fcast_percent >= 0.75*OKTA2PERCENT else 25
+            elif fcast_percent < ob_details['ok_oktas']['min']*OKTA2PERCENT:
                 for category in sorted(
                     cc_categories.values(),
                     key=lambda cat: -cat['val']
                 ):
-                    if fcast_percent >= category['ok_oktas']['min']*OKTA_TO_PERCENT:
+                    if (fcast_percent
+                            >= category['ok_oktas']['min']*OKTA2PERCENT):
                         error = category['val'] - ob_details['val']
-
                         break
-            elif fcast_percent > ob_details['ok_oktas']['max']*OKTA_TO_PERCENT:
+
+            elif fcast_percent > ob_details['ok_oktas']['max']*OKTA2PERCENT:
                 for category in sorted(
                     cc_categories.values(),
                     # Sort VV case to last to make sure it is never reached.
                     key=lambda cat: cat['val'] if cat['val'] != 0 else 101
                 ):
-                    if fcast_percent <= category['ok_oktas']['max']*OKTA_TO_PERCENT:
+                    if (fcast_percent
+                            <= category['ok_oktas']['max']*OKTA2PERCENT):
                         error = category['val'] - ob_details['val']
-
                         break
 
-            self.analyses['cloud_cover']['lead_days'][fcast.lead_days]['fcasts'][
-                fcast.valid_time] = ob_details['val'] + error
-            self.analyses['cloud_cover']['lead_days'][fcast.lead_days]['stats'] += error
+            # Record the results in forecast analyses
+            self.analyses['cloud_cover']['lead_days'][fcast.lead_days][
+                'fcasts'][fcast.valid_time] = ob_details['val'] + error
+            self.analyses['cloud_cover']['lead_days'][fcast.lead_days][
+                'stats'] += error
             self.analyses['cloud_cover']['cumulative_stats'] += error
 
-            if (error is not None
-                    and abs(error) > self.wx_types['cloud_cover']['error_threshold']):
-                self.analyses['cloud_cover']['lead_days'][fcast.lead_days]['errors'][
-                    fcast.valid_time] = error
+            if (error is not None and abs(error) > error_threshold):
+                self.analyses['cloud_cover']['lead_days'][fcast.lead_days][
+                    'errors'][fcast.valid_time] = error
 
     def _analyze_precip_chance(self, ob, fcasts):
         precip_terms = [
@@ -491,8 +299,9 @@ class FcastAnalysis(object):
             'unknown'
         ]
 
-        wx_obs = ob.observed_weather.all_weather
+        # Collect any observations of precip
         precip_obs = []
+        wx_obs = ob.observed_weather.all_weather
         if wx_obs is not None:
             wx_obs = wx_obs.split(', ')
             precip_obs = [
@@ -503,13 +312,16 @@ class FcastAnalysis(object):
         if ob.observed_weather.precip_1hr > 0:
             precip_obs.append(True)
 
+        # Record the results in forecast analyses
         for fcast in fcasts:
             precip_chance = fcast.predicted_weather.precip_chance
             if any(precip_obs):
+                self.analyses['precip_chance']['lead_days'][
+                    fcast.lead_days]['stats'].reg_ob(precip_chance)
                 self.analyses['precip_chance'][
-                    'lead_days'][fcast.lead_days]['stats'].reg_ob(precip_chance)
-                self.analyses['precip_chance']['cumulative_stats'].reg_ob(precip_chance)
+                    'cumulative_stats'].reg_ob(precip_chance)
             else:
+                self.analyses['precip_chance']['lead_days'][
+                    fcast.lead_days]['stats'].reg_predicted(precip_chance)
                 self.analyses['precip_chance'][
-                    'lead_days'][fcast.lead_days]['stats'].reg_predicted(precip_chance)
-                self.analyses['precip_chance']['cumulative_stats'].reg_predicted(precip_chance)
+                    'cumulative_stats'].reg_predicted(precip_chance)

@@ -1,11 +1,14 @@
-""" Setup ndb models."""
-__all__ = ['RawForecast', 'RawObservation', 'Weather', 'Observation', 'Forecast', 'RecordError']
+"""NDB Models for storing NWS weather obserevations and grid forecasts."""
+
+__all__ = ['RawForecast', 'RawObservation', 'Weather', 'Observation',
+           'Forecast', 'RecordError']
 
 from google.appengine.ext import ndb
 
+
 class _ConvIntegerProperty(ndb.IntegerProperty):
     """Define special converting IntegerProperty.
-    
+
     Override _validate to convert float to int if rounding error is low.
     """
     def _validate(self, value):
@@ -13,20 +16,23 @@ class _ConvIntegerProperty(ndb.IntegerProperty):
         if abs(coerced_value - value) < 0.001:
             return coerced_value
         else:
-            RecordError(
-                error_message='Invalid int received for ConvInteger: ' + str(value)
-            ).put()
+            error_message = ('Invalid int received for ConvInteger: '
+                             + str(value))
+            RecordError(error_message=error_message).put()
             return None
+
 
 class RawForecast(ndb.Model):
     """Model to hold raw forecast JSON."""
     date = ndb.StringProperty() # Date forecast was made
     forecast = ndb.JsonProperty()
 
+
 class RawObservation(ndb.Model):
     """Model to hold raw forecast JSON."""
     date = ndb.StringProperty() # Date forecast was made
     observation = ndb.JsonProperty()
+
 
 class Weather(ndb.Model):
     """Model to hold various weather properties.
@@ -35,7 +41,7 @@ class Weather(ndb.Model):
     Attribute cloud_cover is integer in Forecast, but string in
     Observation.
     """
-    
+
     weather = ndb.StringProperty('w')
     all_weather = ndb.StringProperty('aw')
     temperature = ndb.FloatProperty('t')
@@ -47,12 +53,14 @@ class Weather(ndb.Model):
     wind_dir = _ConvIntegerProperty('wd')
     wind_speed = ndb.FloatProperty('ws')
 
+
 class Forecast(ndb.Model):
     """Model to hold hourly weather forecast."""
     predicted_weather = ndb.StructuredProperty(Weather, 'pw')
     valid_time = ndb.StringProperty('t')
     made = ndb.StringProperty('ot')
     lead_days = ndb.IntegerProperty('d')
+
 
 class Observation(ndb.Model):
     """Model to hold weather observation.
@@ -63,6 +71,7 @@ class Observation(ndb.Model):
     """
     time = ndb.StringProperty('t')
     observed_weather = ndb.StructuredProperty(Weather, 'ow')
+
 
 class RecordError(ndb.Model):
     """Model to record error message."""
