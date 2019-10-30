@@ -219,7 +219,7 @@ class BinCount(object):
         )
 
     def get_ob_n(self):
-        return sum([value['fcasts'] for value in self.bins.values()])
+        return sum([value['obs'] for value in self.bins.values()])
 
     def get_predicted_n(self):
         return sum(
@@ -252,7 +252,8 @@ class BinCount(object):
                 break
 
     def bias(self):
-        return self.get_predicted_n()/self.get_ob_n() if self.get_ob_n() != 0 else 0
+        return (100*self.get_predicted_n()/self.get_ob_n() - 100
+                if self.get_ob_n() != 0 else 0)
 
 
 class FcastAnalysis(object):
