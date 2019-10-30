@@ -500,6 +500,8 @@ class FcastAnalysis(object):
                     [wx_ob == term for term in precip_terms]
                 ) for wx_ob in wx_obs
             ]
+        if ob.observed_weather.precip_1hr > 0:
+            precip_obs.append(True)
 
         for fcast in fcasts:
             precip_chance = fcast.predicted_weather.precip_chance
