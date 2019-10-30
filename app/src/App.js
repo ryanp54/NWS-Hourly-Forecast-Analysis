@@ -10,6 +10,7 @@ import {
   VictoryChart,
   VictoryAxis,
   VictoryArea,
+  VictoryBar,
   VictoryGroup,
   VictoryLabel,
   VictoryLine,
@@ -414,12 +415,153 @@ function Cursor({ x, scale }) {
 
 const MemodForecastChart = React.memo(ForecastChart);
 
+function BinsChart({ analysis, activeDay, onChange }) {
+  const activeAnalysis = activeDay
+    ? analysis.lead_days[activeDay].stats
+    : analysis.cumulative_stats;
+  const data = Object.entries(activeAnalysis.bin_count.bins);
+
+  const legendData = Object.keys(analysis.lead_days).map((day) => (
+    {
+      name: `${day}-Day`,
+      symbol: {
+        opacity: activeDay === day ? 1.0 : 0.2,
+        fill: 'darkblue',
+        type: 'square',
+        cursor: 'pointer',
+      },
+      labels: {
+        opacity: activeDay === day ? 1.0 : 0.3,
+        cursor: 'pointer',
+      },
+    }
+  ));
+  legendData.push({
+    name: 'Cumulative',
+    symbol: {
+      opacity: !activeDay ? 1.0 : 0.2,
+      fill: 'darkblue',
+      type: 'square',
+      cursor: 'pointer',
+    },
+    labels: {
+      opacity: !activeDay ? 1.0 : 0.3,
+      cursor: 'pointer',
+    },
+  })
+  legendData.push({ name: 'Expected', symbol: { fill: 'lightblue', type: 'square' } });
+
+  const toggleDisplayed = (labelName) => {
+    const [day] = labelName === 'Cumulative' ? [null] : labelName.split('-Day');
+    let newActiveDay = false;
+    if (activeDay !== day && day !== 'Expected') {
+      newActiveDay = day;
+    }
+    onChange(newActiveDay, []);
+  };
+
+  return (
+    <Container className='pt-3'>
+      <Row className='d-flex justify-content-center'>
+        <h6>
+          {`Precipitation Chance Bin Counts`}
+        </h6>
+      </Row>
+      <Row className='d-flex justify-content-center'>
+        <LabeledValue
+          label='Bias'
+          value={activeAnalysis.bin_count.bias}
+          units='%'
+        />
+      </Row>
+      <Row>
+        <VictoryChart
+          padding={{
+            top: 25, bottom: 50, left: 50, right: 75,
+          }}
+          containerComponent={
+            <VictoryVoronoiContainer
+              voronoiDimension='x'
+              labels={() => null}
+              labelComponent={<Cursor />}
+              onActivated={(points) => onChange(false, points)}
+            />
+          }
+        >
+          <VictoryLegend
+            x={15} y={5}
+            orientation='horizontal'
+            borderPadding={{
+              top: 0, bottom: 0, left: 5, right: 0,
+            }}
+            gutter={10}
+            symbolSpacer={5}
+            style={{ labels: { fontSize: 9 } }}
+            data={legendData}
+            toggleDisplayed={toggleDisplayed}
+            events={[{
+              eventHandlers: {
+                onClick: (evt, target, i, legend) => {
+                  if (target && target.datum) {
+                    legend.props.toggleDisplayed(target.datum.name);
+                  }
+                },
+              },
+            }]}
+          />
+
+          <VictoryAxis
+            style={{
+              ticks: { stroke: 'black', size: 5 },
+              tickLabels: { fontSize: 12 },
+              grid: { stroke: 'grey' },
+            }}
+            label='Forecasted chance of pricipitation (%)'
+            offsetY={50}
+            axisLabelComponent={<VictoryLabel dy={5} style={{ fontSize: 11 }} />}
+          />
+          <VictoryAxis
+            dependentAxis
+            crossAxis={false}
+            style={{
+              grid: { stroke: 'grey' },
+              tickLabels: { fontSize: 12 },
+            }}
+            label='Number of precipitation observations'
+            axisLabelComponent={<VictoryLabel dy={-5} angle={-90} style={{ fontSize: 11 }} />}
+          />
+
+          <VictoryGroup
+            colorScale={['darkblue', 'lightblue']}
+            offset={5}
+          >
+            <VictoryBar
+              name='Observed occurances'
+              data={data}
+              x={0}
+              y={(datum) => datum[1].obs}
+            />
+            <VictoryBar
+              name='Predicted occurances'
+              data={data}
+              x={0}
+              y={(datum) => datum[1].fcasts * (datum[0] / 100)}
+            />
+          </VictoryGroup>
+
+        </VictoryChart>
+      </Row>
+    </Container>
+  );
+}
+
 function AnalysisChart({ analysis }) {
   const [activeFcastDay, setActiveFcastDay] = useState(null);
   const [activeData, setActiveData] = useState([]);
 
   const handleChange = useCallback(
     (newActiveDay, newActiveData) => {
+      debugger
       if (newActiveDay !== false) {
         setActiveFcastDay(newActiveDay);
       }
@@ -430,20 +572,42 @@ function AnalysisChart({ analysis }) {
     [],
   );
 
+  let chart;
+  let detail;
+  if (analysis.metadata.prop_name === 'precip_chance') {
+    chart = <BinsChart analysis={analysis} activeDay={activeFcastDay} onChange={handleChange} />;
+    detail = (
+      <ActiveDataDisplay
+        displayInfo={{
+          ...analysis.metadata,
+          ...{ units: { x: analysis.metadata.units, y: '' } },
+        }}
+        data={activeData}
+      />
+    );
+  } else {
+    chart = (
+      <MemodForecastChart
+        analysis={analysis}
+        activeDay={activeFcastDay}
+        onChange={handleChange}
+      />
+    );
+    detail = (
+      <ActiveDataDisplay
+        displayInfo={analysis.metadata}
+        data={activeData}
+      />
+    );
+  }
+
   return (
     <Container>
       <Row>
-        <MemodForecastChart
-          analysis={analysis}
-          activeDay={activeFcastDay}
-          onChange={handleChange}
-        />
+        {chart}
       </Row>
       <Row>
-        <ActiveDataDisplay
-          displayInfo={analysis.metadata}
-          data={activeData}
-        />
+        {detail}
       </Row>
     </Container>
   );
@@ -471,8 +635,23 @@ function ActiveDataDisplay({ displayInfo, data }) {
     return '';
   }
 
-  const [date, time] = data[0]._x.toLocaleString({ dateStyle: 'short', timeStyle: 'short' })
-    .split(',');
+  let { units } = displayInfo;
+  if (!units || Object.getPrototypeOf(units) !== Object.prototype) {
+    units = { x: units, y: units };
+  }
+
+  // Format header text depending on type of charted data
+  let header = displayInfo.display_name || '';
+  let xDesc = '';
+  if (data[0]._x instanceof Date) {
+    const [date, time] = data[0]._x
+      .toLocaleString({ dateStyle: 'short', timeStyle: 'short' }).split(',');
+    xDesc = `${header && ' on '}${date} at ${time}`;
+  } else {
+    xDesc = `${header && ': '}${data[0][0]} ${units.x}`;
+  }
+  header = `${header}${xDesc}`;
+
 
   const formattedData = [];
   let formattedErrorDatum;
@@ -486,7 +665,7 @@ function ActiveDataDisplay({ displayInfo, data }) {
         <LabeledValue
           label={datum.childName}
           value={datum._y}
-          units={displayInfo.units}
+          units={units.y}
           key={datum.childName}
         />,
       );
@@ -494,23 +673,22 @@ function ActiveDataDisplay({ displayInfo, data }) {
       formattedErrorDatum = <LabeledValue
           label='Forecast Error'
           value={datum.amount}
-          units={displayInfo.units}
+          units={units.y}
           key='Forecast Error'
           className='text-danger'
         />;
     }
   });
 
+  // Error LabeledValue is pushed at the end so that it is displayed last.
   if (formattedErrorDatum) {
     formattedData.push(formattedErrorDatum);
   }
 
   return (
     <Container className='h6 font-weight-normal'>
-      <Row className='d-flex justify-content-center pb-2'>
-        <Col>
-           {`${displayInfo.display_name} on ${date} at ${time}`}
-         </Col>
+      <Row className='pb-2'>
+        {header}
       </Row>
       <Row>
         {formattedData}
@@ -548,7 +726,7 @@ function AnalysisPage() {
 
   // List of weather types Analysis chart is set-up to handle.
   // TODO: Finish all and refator to something more appropriate.
-  const workingWeathers = ['temperature', 'dewpoint', 'wind_speed', 'cloud_cover', 'precip_6hr'];
+  const workingWeathers = ['temperature', 'dewpoint', 'wind_speed', 'cloud_cover', 'precip_chance'];
 
   return (
     <Container>
