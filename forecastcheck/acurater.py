@@ -1,6 +1,7 @@
 __all__ = ['FcastAnalysis']
 
 import math
+import ast
 
 from forecastcheck.ndb_setup import Observation, Forecast
 from forecastcheck.stats import SimpleError, BinCount
@@ -10,7 +11,7 @@ class FcastAnalysis(object):
     """Create a forecast accuracy analysis.
 
     Attributes:
-        analyses (abject): The analysis results.
+        analyses (dict): The analysis results.
     """
 
     # Details of supported weather types.
@@ -114,6 +115,10 @@ class FcastAnalysis(object):
                 }
 
         self.analyses = analyses
+
+    def forjson(self):
+        """Return a dict that is json serializable."""
+        return ast.literal_eval(str(self.analyses))
 
     def _analyze(self, obs):
         for ob in obs:

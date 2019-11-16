@@ -1,5 +1,4 @@
 import pdb
-import ast
 
 from functools import wraps
 from datetime import date, datetime, timedelta
@@ -85,9 +84,9 @@ def record_forecast():
 def analyze_fcasts():
     start = request.args['start']
     end = request.args['end']
-    fcast = FcastAnalysis(start, end)
+    analysis = FcastAnalysis(start, end).forjson()
 
-    return jsonify(ast.literal_eval(str(fcast.analyses)))
+    return jsonify(analysis)
 
 
 @app.route('/OAX/forecasts/')
