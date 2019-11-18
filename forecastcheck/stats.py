@@ -1,5 +1,6 @@
 __all__ = ['AveError', 'Bias', 'Accuracy', 'SimpleError', 'BinCount']
 
+import copy
 
 class AveError(object):
     """Use to calculate mean error.
@@ -264,20 +265,22 @@ class BinCount(object):
 
     """
     def __init__(self, bins=None):
-        # TODO: Use a copy of bins dictionary, not original
-        self.bins = bins or {
-            0: {'fcasts': 0, 'obs': 0},
-            10: {'fcasts': 0, 'obs': 0},
-            20: {'fcasts': 0, 'obs': 0},
-            30: {'fcasts': 0, 'obs': 0},
-            40: {'fcasts': 0, 'obs': 0},
-            50: {'fcasts': 0, 'obs': 0},
-            60: {'fcasts': 0, 'obs': 0},
-            70: {'fcasts': 0, 'obs': 0},
-            80: {'fcasts': 0, 'obs': 0},
-            90: {'fcasts': 0, 'obs': 0},
-            100: {'fcasts': 0, 'obs': 0}
-        }
+        if bins is not None:
+            self.bins = copy.deepcopy(bins)
+        else:
+            self.bins = {
+                0: {'fcasts': 0, 'obs': 0},
+                10: {'fcasts': 0, 'obs': 0},
+                20: {'fcasts': 0, 'obs': 0},
+                30: {'fcasts': 0, 'obs': 0},
+                40: {'fcasts': 0, 'obs': 0},
+                50: {'fcasts': 0, 'obs': 0},
+                60: {'fcasts': 0, 'obs': 0},
+                70: {'fcasts': 0, 'obs': 0},
+                80: {'fcasts': 0, 'obs': 0},
+                90: {'fcasts': 0, 'obs': 0},
+                100: {'fcasts': 0, 'obs': 0}
+            }
 
     def __str__(self):
         return str(self.bins)
