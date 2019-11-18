@@ -83,20 +83,11 @@ class FcastAnalysis(object):
 
     def _init_analyses(self, valid_lead_ds):
 
-        # TODO: See if this can be simplified.
-        def make_statfn(error_threshold):
-            def fn():
-                if error_threshold is not None:
-                    return SimpleError(error_threshold=error_threshold)
-                else:
-                    return BinCount()
-            return fn
-
-        # Dictionary of functions to generate the initial stats objects.
-        defaultStats = {
-            wx_type: make_statfn(data.get('error_threshold'))
-            for wx_type, data in self.wx_types.items()
-        }
+        def make_stat(error_threshold):
+            if error_threshold is not None:
+                return SimpleError(error_threshold=error_threshold)
+            else:
+                return BinCount()
 
         analyses = {}
         for wx_type, data in self.wx_types.items():
@@ -104,12 +95,12 @@ class FcastAnalysis(object):
                 'obs': {},
                 'metadata': data,
                 'lead_days': {},
-                'cumulative_stats': defaultStats[wx_type](),
+                'cumulative_stats': make_stat(data.get('error_threshold')),
             }
 
             for lead_day in valid_lead_ds:
                 analyses[wx_type]['lead_days'][lead_day] = {
-                    'stats': defaultStats[wx_type](),
+                    'stats': make_stat(data.get('error_threshold')),
                     'fcasts': {},
                     'errors': {},
                 }
