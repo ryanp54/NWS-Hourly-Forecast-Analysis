@@ -1,0 +1,31 @@
+runtime: python27
+api_version: 1
+threadsafe: true
+skip_files:
+- ^(.*/)?#.*#$
+- ^(.*/)?.*~$
+- ^(.*/)?.*\.py[co]$
+- ^(.*/)?.*/RCS/.*$
+- ^(.*/)?\..*$
+- ^(.*/)?.*\.bak$
+- ^\.sublime-project$
+- ^\.sublime-workspace$
+- env/
+- .git/
+- app/[ac-zA-Z]+.*
+
+libraries:
+- name: ssl
+  version: latest
+
+# [START handlers]
+handlers:
+- url: /static
+  static_dir: app/build/static
+  secure: always
+  application_readable: true
+- url: /.*
+  script: main.app
+  secure: always
+  redirect_http_response_code: 301
+# [END handlers]
