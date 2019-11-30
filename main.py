@@ -1,5 +1,3 @@
-import pdb
-
 from functools import wraps
 from datetime import date, datetime, timedelta
 
@@ -18,12 +16,18 @@ app = Flask(__name__)
 app.config['JSONIFY_PRETTYPRINT_REGULAR'] = True
 app.config['JSON_AS_ASCII'] = False
 
-nws_gridpoint = 'OAX/76,56'
+
+# Info for NWS API queries.
+nws_wfo = 'OAX'  # Also used in the routes.
+nws_gridpoint = '{}/76,56'.format(nws_wfo)
 nws_station = 'KMLE'
 nws_headers = {
     'user-agent':
         'site:weather2019.appspot.com; contact-email:ryanp54@yahoo.com'
 }
+
+
+# # # Route wrappers # # #
 
 
 def cron_only(f):
@@ -47,22 +51,15 @@ def allow_cors(f):
     return cors_fix
 
 
+# # # Routes # # #
+
 @app.route('/')
 @app.route('/index')
 def welcome():
     return send_from_directory('app/build', 'index.html')
 
 
-@app.route('/test')
-def test():
-    if request.headers.get('Host') != 'localhost:8080':
-        return 'Forbidden', 403
-    else:
-        pdb.set_trace()
-    return 'Success'
-
-
-@app.route('/OAX/forecasts/record')
+@app.route('/{}/forecasts/record'.format(nws_wfo))
 @cron_only
 def record_forecast():
     resp = get(
@@ -79,7 +76,7 @@ def record_forecast():
     return resp
 
 
-@app.route('/OAX/forecasts/analyze')
+@app.route('/{}/forecasts/analyze'.format(nws_wfo))
 @allow_cors
 def analyze_fcasts():
     start = request.args['start']
@@ -89,7 +86,7 @@ def analyze_fcasts():
     return jsonify(analysis)
 
 
-@app.route('/OAX/forecasts/')
+@app.route('/{}/forecasts/'.format(nws_wfo))
 @allow_cors
 def get_forecasts():
     query = Forecast.query()
@@ -108,16 +105,7 @@ def get_forecasts():
         sorted(resp, key=lambda x: [x['valid_time'], x['lead_days']]))
 
 
-@app.route('/OAX/forecasts/delete')
-@cron_only
-def delete_forecasts():
-    for forecast in Forecast.query().order(-Forecast.valid_time).fetch(168):
-        forecast.key.delete()
-
-    return 'Deleted 168 forecasts.'
-
-
-@app.route('/OAX/observations/record')
+@app.route('/{}/observations/record'.format(nws_wfo))
 @cron_only
 def record_observation():
     resp = get(
@@ -138,7 +126,7 @@ def record_observation():
     return resp
 
 
-@app.route('/OAX/rawForecasts/record')
+@app.route('/{}/rawForecasts/record'.format(nws_wfo))
 @cron_only
 def record_rawforecast():
     r = get(
@@ -153,16 +141,8 @@ def record_rawforecast():
     return jsonify(r.json()), r.status_code
 
 
-@app.route('/OAX/rawForecasts/convert/<date_made>')
-@cron_only
-def conv_rawforecasts(date_made):
-    raw_forecast = RawForecast.query(RawForecast.date == date_made).get()
-    grid_data = GridData(raw_forecast.forecast['properties'])
-    return jsonify(map(lambda key: key.id(), grid_data.to_ndb()))
-
-
-@app.route('/OAX/rawForecasts/')
-@app.route('/OAX/rawForecasts/<date_made>')
+@app.route('/{}/rawForecasts/'.format(nws_wfo))
+@app.route('/{}/rawForecasts/<date_made>'.format(nws_wfo))
 def get_rawforecasts(date_made=None):
     if date_made:
         forecast = RawForecast.query(RawForecast.date == date_made).get()
@@ -172,8 +152,8 @@ def get_rawforecasts(date_made=None):
         forecast={'date': forecast.date, 'forecast': forecast.forecast})
 
 
-@app.route('/OAX/rawObservations/')
-@app.route('/OAX/rawObservations/<date_made>')
+@app.route('/{}/rawObservations/'.format(nws_wfo))
+@app.route('/{}/rawObservations/<date_made>'.format(nws_wfo))
 def get_rawobservations(date_made=None):
     if date_made:
         observation = RawObservation.query(
@@ -187,5 +167,7 @@ def get_rawobservations(date_made=None):
             'observation': observation.observation
         })
 
+
+# # # Helper functions # # #
 
 def days_ago(days): return datetime.utcnow() - timedelta(days=days)
