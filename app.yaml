@@ -12,7 +12,7 @@ skip_files:
 - ^\.sublime-workspace$
 - env/
 - .git/
-- app/[ac-zA-Z]+.*
+- app/[ac-zA-Z]+.*  # Limit to app paths starting w/ 'b' (i.e. just 'build').
 
 libraries:
 - name: ssl

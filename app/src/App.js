@@ -11,10 +11,7 @@ import ForecastAnalysis from './forecastAnalysis';
 import { getDaysAgo, getISODate } from './helpers';
 import { testData } from './testData';
 
-// TODO: Remove conditional when done testing.
-const API_URL = '_self' in React.createElement('div')
-  ? 'https://weather2019.appspot.com/OAX/forecasts/analyze?'
-  : '/OAX/forecasts/analyze?';
+const API_URL = '/OAX/forecasts/analyze?';
 
 
 export default function AnalysisPage() {
