@@ -1,6 +1,81 @@
-__all__ = ['AveError', 'Bias', 'Accuracy', 'SimpleError', 'BinCount']
+__all__ = ['SimpleError', 'BinCount', 'AveError', 'Bias', 'Accuracy']
 
 import copy
+
+
+class SimpleError(object):
+    """Use to calculate simple error statistics.
+
+    Supports the standard add and sub operators with another SimpleError
+    or float representing an individual error. The repr method returns
+    a string representation of the object, which is JSON serializable.
+    Should be initialized with the error_threshold for the related
+    Accuracy instance. Initial class instances may also be provided for
+    the attributes, but this functionality exists mainly to support the
+    class's add and sub operator methods.
+
+    Attributes:
+        ave_error (obj): Related AveError instance
+        bias (obj): Related Bias instance
+        accuracy (obj): Related Accuracy instance
+        error_threshold (float): Maximum error amount accepted as
+            accurate.
+
+    """
+
+    def __init__(
+        self,
+        ave_error=None,
+        bias=None,
+        accuracy=None,
+        error_threshold=0
+    ):
+        self.ave_error = ave_error or AveError()
+        self.bias = bias or Bias()
+        self.accuracy = accuracy or Accuracy(error_threshold)
+
+    def __str__(self):
+        return (
+            '{{error: {0.ave_error!s},'
+            ' bias: {0.bias!s},'
+            ' accuracy: {0.accuracy!r}}}'
+        ).format(self)
+
+    def __repr__(self):
+        return '{0.__dict__}'.format(self)
+
+    def __add__(self, addend):
+        if isinstance(addend, SimpleError):
+            new_value = SimpleError(
+                self.ave_error + addend.ave_error,
+                self.bias + addend.bias,
+                self.accuracy + addend.accuracy
+            )
+        else:
+            new_value = SimpleError(
+                self.ave_error + addend,
+                self.bias + addend,
+                self.accuracy + addend
+            )
+
+        return new_value
+
+    def __sub__(self, subtrahend):
+        if isinstance(subtrahend, SimpleError):
+            new_value = SimpleError(
+                self.ave_error - subtrahend.ave_error,
+                self.bias - subtrahend.bias,
+                self.accuracy - subtrahend.accuracy
+            )
+        else:
+            new_value = SimpleError(
+                self.ave_error - subtrahend,
+                self.bias - subtrahend,
+                self.accuracy - subtrahend
+            )
+
+        return new_value
+
 
 class AveError(object):
     """Use to calculate mean error.
@@ -176,80 +251,6 @@ class Accuracy(object):
         return Accuracy(self.error_threshold, accuracy, n)
 
 
-class SimpleError(object):
-    """Use to calculate simple error statistics.
-
-    Supports the standard add and sub operators with another SimpleError
-    or float representing an individual error. The repr method returns
-    a string representation of the object, which is JSON serializable.
-    Should be initialized with the error_threshold for the related
-    Accuracy instance. Initial class instances may also be provided for
-    the attributes, but this functionality exists mainly to support the
-    class's add and sub operator methods.
-
-    Attributes:
-        ave_error (obj): Related AveError instance
-        bias (obj): Related Bias instance
-        accuracy (obj): Related Accuracy instance
-        error_threshold (float): Maximum error amount accepted as
-            accurate.
-
-    """
-
-    def __init__(
-        self,
-        ave_error=None,
-        bias=None,
-        accuracy=None,
-        error_threshold=0
-    ):
-        self.ave_error = ave_error or AveError()
-        self.bias = bias or Bias()
-        self.accuracy = accuracy or Accuracy(error_threshold)
-
-    def __str__(self):
-        return (
-            '{{error: {0.ave_error!s},'
-            ' bias: {0.bias!s},'
-            ' accuracy: {0.accuracy!r}}}'
-        ).format(self)
-
-    def __repr__(self):
-        return '{0.__dict__}'.format(self)
-
-    def __add__(self, addend):
-        if isinstance(addend, SimpleError):
-            new_value = SimpleError(
-                self.ave_error + addend.ave_error,
-                self.bias + addend.bias,
-                self.accuracy + addend.accuracy
-            )
-        else:
-            new_value = SimpleError(
-                self.ave_error + addend,
-                self.bias + addend,
-                self.accuracy + addend
-            )
-
-        return new_value
-
-    def __sub__(self, subtrahend):
-        if isinstance(subtrahend, SimpleError):
-            new_value = SimpleError(
-                self.ave_error - subtrahend.ave_error,
-                self.bias - subtrahend.bias,
-                self.accuracy - subtrahend.accuracy
-            )
-        else:
-            new_value = SimpleError(
-                self.ave_error - subtrahend,
-                self.bias - subtrahend,
-                self.accuracy - subtrahend
-            )
-
-        return new_value
-
-
 class BinCount(object):
     """Use to keep track of bin counts of observations for given forecasts.
 
@@ -292,26 +293,24 @@ class BinCount(object):
         )
 
     def get_ob_n(self):
-        """Sum observed precip events.
-
-        Returns:
-            Sum of precipation events observed.
+        """Returns:
+            Sum of events occurances observed.
         """
         return sum(value['obs'] for value in self.bins.values())
 
     def get_predicted_n(self):
         """Returns:
-            Sum of precipation events expected based on the forecasted
-            probablities.
+            Sum of the number of event occurances expected based on the
+            forecasted probablities.
         """
         return sum(
             (key/100.0)*value['fcasts'] for key, value in self.bins.items())
 
     def reg_ob(self, value):
-        """Register an observed precip event.
+        """Register an observed event occurance.
 
         Args:
-            value (int): Percent forecast chance at time of observation.
+            value (int): Percent forecast chance for instance of occurance.
 
         Returns:
             None
@@ -325,10 +324,10 @@ class BinCount(object):
                 break
 
     def rem_ob(self, value):
-        """Remove an observed precip event
+        """Remove an observed event occurance.
 
         Args:
-            value (int): Percent forecast chance at time of observation
+            value (int): Percent forecast chance for instance of occurance.
 
         Returns:
             None
@@ -342,10 +341,10 @@ class BinCount(object):
                 break
 
     def reg_predicted(self, value):
-        """Register a precipiation probability forecast.
+        """Register a probability forecast.
 
         Args:
-            value (int): Probability of precip in percent.
+            value (int): Probability of occurance in percent.
 
         Returns:
             None
@@ -358,10 +357,10 @@ class BinCount(object):
                 break
 
     def rem_predicted(self, value):
-        """Remove a precipiation probability forecast.
+        """Remove a probability forecast.
 
         Args:
-            value (int): Probability of precip in percent.
+            value (int): Probability of occurance in percent.
 
         Returns:
             None
@@ -377,8 +376,8 @@ class BinCount(object):
         """ Calculate bias.
 
         Returns:
-            The percent difference of the expected number of precip
-            precip events vs what was.
+            The percent difference of the expected number of event occurances
+            vs observed event occurances.
 
         """
         if self.get_ob_n() != 0:

@@ -3,8 +3,8 @@ __all__ = ['FcastAnalysis']
 import math
 import ast
 
-from forecastcheck.ndb_setup import Observation, Forecast
-from forecastcheck.stats import SimpleError, BinCount
+from weather.ndb_setup import Observation, Forecast
+from weather.stats import SimpleError, BinCount
 
 
 class FcastAnalysis(object):

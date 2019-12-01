@@ -1,10 +1,12 @@
+"""Main code for handling web requests."""
+
 from functools import wraps
 from datetime import date, datetime, timedelta
 
-from forecastcheck.ndb_setup import (
+from weather.ndb_setup import (
     RawForecast, RawObservation, Forecast, RecordError)
-from forecastcheck.nws_parse import GridData, ObservationData
-from forecastcheck.acurater import FcastAnalysis
+from weather.nws_parse import GridData, ObservationData
+from weather.fcastanalysis import FcastAnalysis
 
 from requests import get
 from flask import Flask, request, send_from_directory, jsonify
@@ -18,7 +20,7 @@ app.config['JSON_AS_ASCII'] = False
 
 
 # Info for NWS API queries.
-nws_wfo = 'OAX'  # Also used in the routes.
+nws_wfo = 'OAX'  # Also used for the routes.
 nws_gridpoint = '{}/76,56'.format(nws_wfo)
 nws_station = 'KMLE'
 nws_headers = {

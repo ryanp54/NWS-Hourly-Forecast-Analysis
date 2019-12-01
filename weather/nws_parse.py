@@ -10,8 +10,8 @@ from datetime import datetime, timedelta
 
 from google.appengine.ext import ndb
 
-from forecastcheck.ndb_setup import (RawObservation, Weather, Observation,
-                                     Forecast, RecordError)
+from weather.ndb_setup import (RawObservation, Weather, Observation,
+                               Forecast, RecordError)
 
 
 class GridData(object):

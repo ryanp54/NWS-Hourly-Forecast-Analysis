@@ -6,7 +6,7 @@ A Google App Engine Python 2 Standard Environment website that displays charts a
 
 Requires [Google App Engine Python SDK](https://cloud.google.com/appengine/downloads) for development and deployment and that the required libraries in requirements.txt have been installed with [`pip`](pip.readthedocs.org).
 
-The /forecastcheck directory contains the modules that support the forecast analysis API.
+The /weather directory contains the modules that support the forecast analysis API.
 
 The /app directory contains a React development environment, including the /build subdirectory, which is where the production version of the React app and main static webpage resources reside. If further development is to be done to the React app, the required libraries in package.json must be installed with [`npm`](https://docs.npmjs.com/).
 
