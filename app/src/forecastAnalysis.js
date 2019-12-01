@@ -654,13 +654,13 @@ function BinsChart({ analysis, onCursorChange }) {
               name='Observed occurances'
               data={data}
               x={0}
-              y={(datum) => datum[1].obs}
+              y={[1, 'obs']}
             />
             <VictoryBar
               name='Predicted occurances'
               data={data}
               x={0}
-              y={(datum) => datum[1].fcasts * (datum[0] / 100)}
+              y={[1, 'predicted']}
             />
           </VictoryGroup>
 

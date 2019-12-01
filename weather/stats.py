@@ -252,7 +252,7 @@ class Accuracy(object):
 
 
 class BinCount(object):
-    """Use to keep track of bin counts of observations for given forecasts.
+    """Use to keep track of bin counts of observations and predictions.
 
     The repr method returns a string representation of the object, which
     is JSON serializable. Should be initialized with no arguments or a
@@ -260,7 +260,7 @@ class BinCount(object):
 
     Attributes:
         bins (dict of int: dict of str: int): Hold the counts of
-            forecasts and observations (the fcasts and obs keys,
+            predicitons and observations (the predicted and obs keys,
             repectively) that fall into the percent probablity bin the
             parent dictionary key represents.
 
@@ -270,17 +270,17 @@ class BinCount(object):
             self.bins = copy.deepcopy(bins)
         else:
             self.bins = {
-                0: {'fcasts': 0, 'obs': 0},
-                10: {'fcasts': 0, 'obs': 0},
-                20: {'fcasts': 0, 'obs': 0},
-                30: {'fcasts': 0, 'obs': 0},
-                40: {'fcasts': 0, 'obs': 0},
-                50: {'fcasts': 0, 'obs': 0},
-                60: {'fcasts': 0, 'obs': 0},
-                70: {'fcasts': 0, 'obs': 0},
-                80: {'fcasts': 0, 'obs': 0},
-                90: {'fcasts': 0, 'obs': 0},
-                100: {'fcasts': 0, 'obs': 0}
+                0: {'predicted': 0, 'obs': 0},
+                10: {'predicted': 0, 'obs': 0},
+                20: {'predicted': 0, 'obs': 0},
+                30: {'predicted': 0, 'obs': 0},
+                40: {'predicted': 0, 'obs': 0},
+                50: {'predicted': 0, 'obs': 0},
+                60: {'predicted': 0, 'obs': 0},
+                70: {'predicted': 0, 'obs': 0},
+                80: {'predicted': 0, 'obs': 0},
+                90: {'predicted': 0, 'obs': 0},
+                100: {'predicted': 0, 'obs': 0}
             }
 
     def __str__(self):
@@ -304,7 +304,7 @@ class BinCount(object):
             forecasted probablities.
         """
         return sum(
-            (key/100.0)*value['fcasts'] for key, value in self.bins.items())
+            value['predicted'] for key, value in self.bins.items())
 
     def reg_ob(self, value):
         """Register an observed event occurance.
@@ -319,7 +319,7 @@ class BinCount(object):
         for bin_ in sorted(self.bins):
             if value <= bin_:
                 self.bins[bin_]['obs'] += 1
-                self.bins[bin_]['fcasts'] += 1
+                self.bins[bin_]['predicted'] += value/100.0
 
                 break
 
@@ -336,7 +336,7 @@ class BinCount(object):
         for bin_ in sorted(self.bins):
             if value <= bin_:
                 self.bins[bin_]['obs'] -= 1
-                self.bins[bin_]['fcasts'] -= 1
+                self.bins[bin_]['predicted'] -= value/100.0
 
                 break
 
@@ -352,7 +352,7 @@ class BinCount(object):
         """
         for bin_ in sorted(self.bins):
             if value <= bin_:
-                self.bins[bin_]['fcasts'] += 1
+                self.bins[bin_]['predicted'] += value/100.0
 
                 break
 
@@ -368,7 +368,7 @@ class BinCount(object):
         """
         for bin_ in sorted(self.bins):
             if value <= bin_:
-                self.bins[bin_]['fcasts'] -= 1
+                self.bins[bin_]['predicted'] -= value/100.0
 
                 break
 

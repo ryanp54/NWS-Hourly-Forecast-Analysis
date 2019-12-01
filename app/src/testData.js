@@ -4148,51 +4148,51 @@ export const testData = `{
   "precip_chance": {
     "cumulative_stats": {
       "bin_count": {
-        "bias": 55.7983193277, 
+        "bias": 75.4155844156, 
         "bins": {
           "0": {
-            "fcasts": 280, 
-            "obs": 23
+            "obs": 0, 
+            "predicted": 0.0
           }, 
           "10": {
-            "fcasts": 505, 
-            "obs": 15
+            "obs": 1, 
+            "predicted": 22.12999999999996
           }, 
           "100": {
-            "fcasts": 0, 
-            "obs": 0
+            "obs": 0, 
+            "predicted": 0
           }, 
           "20": {
-            "fcasts": 182, 
-            "obs": 17
+            "obs": 12, 
+            "predicted": 26.530000000000022
           }, 
           "30": {
-            "fcasts": 84, 
-            "obs": 13
+            "obs": 13, 
+            "predicted": 20.039999999999996
           }, 
           "40": {
-            "fcasts": 21, 
-            "obs": 4
+            "obs": 4, 
+            "predicted": 7.179999999999999
           }, 
           "50": {
-            "fcasts": 39, 
-            "obs": 17
+            "obs": 17, 
+            "predicted": 16.979999999999993
           }, 
           "60": {
-            "fcasts": 29, 
-            "obs": 10
+            "obs": 10, 
+            "predicted": 15.760000000000007
           }, 
           "70": {
-            "fcasts": 15, 
-            "obs": 6
+            "obs": 6, 
+            "predicted": 9.930000000000001
           }, 
           "80": {
-            "fcasts": 14, 
-            "obs": 9
+            "obs": 9, 
+            "predicted": 10.580000000000002
           }, 
           "90": {
-            "fcasts": 7, 
-            "obs": 5
+            "obs": 5, 
+            "predicted": 5.9399999999999995
           }
         }
       }
@@ -4203,51 +4203,51 @@ export const testData = `{
         "fcasts": {}, 
         "stats": {
           "bin_count": {
-            "bias": 16.4705882353, 
+            "bias": 26.0909090909, 
             "bins": {
               "0": {
-                "fcasts": 70, 
-                "obs": 6
+                "obs": 0, 
+                "predicted": 0.0
               }, 
               "10": {
-                "fcasts": 67, 
-                "obs": 1
+                "obs": 1, 
+                "predicted": 2.030000000000001
               }, 
               "100": {
-                "fcasts": 0, 
-                "obs": 0
+                "obs": 0, 
+                "predicted": 0
               }, 
               "20": {
-                "fcasts": 14, 
-                "obs": 3
+                "obs": 3, 
+                "predicted": 2.1700000000000004
               }, 
               "30": {
-                "fcasts": 0, 
-                "obs": 0
+                "obs": 0, 
+                "predicted": 0
               }, 
               "40": {
-                "fcasts": 3, 
-                "obs": 0
+                "obs": 0, 
+                "predicted": 1.06
               }, 
               "50": {
-                "fcasts": 3, 
-                "obs": 1
+                "obs": 1, 
+                "predicted": 1.44
               }, 
               "60": {
-                "fcasts": 5, 
-                "obs": 2
+                "obs": 2, 
+                "predicted": 2.8599999999999994
               }, 
               "70": {
-                "fcasts": 3, 
-                "obs": 2
+                "obs": 2, 
+                "predicted": 2.01
               }, 
               "80": {
-                "fcasts": 2, 
-                "obs": 1
+                "obs": 1, 
+                "predicted": 1.46
               }, 
               "90": {
-                "fcasts": 1, 
-                "obs": 1
+                "obs": 1, 
+                "predicted": 0.84
               }
             }
           }
@@ -4258,51 +4258,51 @@ export const testData = `{
         "fcasts": {}, 
         "stats": {
           "bin_count": {
-            "bias": 55.2941176471, 
+            "bias": 77.2727272727, 
             "bins": {
               "0": {
-                "fcasts": 60, 
-                "obs": 6
+                "obs": 0, 
+                "predicted": 0.0
               }, 
               "10": {
-                "fcasts": 66, 
-                "obs": 0
+                "obs": 0, 
+                "predicted": 1.9800000000000015
               }, 
               "100": {
-                "fcasts": 0, 
-                "obs": 0
+                "obs": 0, 
+                "predicted": 0
               }, 
               "20": {
-                "fcasts": 12, 
-                "obs": 3
+                "obs": 3, 
+                "predicted": 1.8599999999999997
               }, 
               "30": {
-                "fcasts": 6, 
-                "obs": 0
+                "obs": 0, 
+                "predicted": 1.3800000000000001
               }, 
               "40": {
-                "fcasts": 0, 
-                "obs": 0
+                "obs": 0, 
+                "predicted": 0
               }, 
               "50": {
-                "fcasts": 6, 
-                "obs": 2
+                "obs": 2, 
+                "predicted": 2.58
               }, 
               "60": {
-                "fcasts": 6, 
-                "obs": 0
+                "obs": 0, 
+                "predicted": 3.0599999999999996
               }, 
               "70": {
-                "fcasts": 6, 
-                "obs": 2
+                "obs": 2, 
+                "predicted": 3.9
               }, 
               "80": {
-                "fcasts": 6, 
-                "obs": 4
+                "obs": 4, 
+                "predicted": 4.739999999999999
               }, 
               "90": {
-                "fcasts": 0, 
-                "obs": 0
+                "obs": 0, 
+                "predicted": 0
               }
             }
           }
@@ -4313,51 +4313,51 @@ export const testData = `{
         "fcasts": {}, 
         "stats": {
           "bin_count": {
-            "bias": 51.7647058824, 
+            "bias": 71.8181818182, 
             "bins": {
               "0": {
-                "fcasts": 60, 
-                "obs": 6
+                "obs": 0, 
+                "predicted": 0.0
               }, 
               "10": {
-                "fcasts": 60, 
-                "obs": 0
+                "obs": 0, 
+                "predicted": 1.5000000000000009
               }, 
               "100": {
-                "fcasts": 0, 
-                "obs": 0
+                "obs": 0, 
+                "predicted": 0
               }, 
               "20": {
-                "fcasts": 18, 
-                "obs": 2
+                "obs": 2, 
+                "predicted": 2.58
               }, 
               "30": {
-                "fcasts": 6, 
-                "obs": 1
+                "obs": 1, 
+                "predicted": 1.44
               }, 
               "40": {
-                "fcasts": 12, 
-                "obs": 2
+                "obs": 2, 
+                "predicted": 4.26
               }, 
               "50": {
-                "fcasts": 0, 
-                "obs": 0
+                "obs": 0, 
+                "predicted": 0
               }, 
               "60": {
-                "fcasts": 0, 
-                "obs": 0
+                "obs": 0, 
+                "predicted": 0
               }, 
               "70": {
-                "fcasts": 6, 
-                "obs": 2
+                "obs": 2, 
+                "predicted": 4.0200000000000005
               }, 
               "80": {
-                "fcasts": 0, 
-                "obs": 0
+                "obs": 0, 
+                "predicted": 0
               }, 
               "90": {
-                "fcasts": 6, 
-                "obs": 4
+                "obs": 4, 
+                "predicted": 5.1
               }
             }
           }
@@ -4368,51 +4368,51 @@ export const testData = `{
         "fcasts": {}, 
         "stats": {
           "bin_count": {
-            "bias": 41.1764705882, 
+            "bias": 63.6363636364, 
             "bins": {
               "0": {
-                "fcasts": 66, 
-                "obs": 5
+                "obs": 0, 
+                "predicted": 0.0
               }, 
               "10": {
-                "fcasts": 54, 
-                "obs": 1
+                "obs": 0, 
+                "predicted": 2.2200000000000006
               }, 
               "100": {
-                "fcasts": 0, 
-                "obs": 0
+                "obs": 0, 
+                "predicted": 0
               }, 
               "20": {
-                "fcasts": 18, 
-                "obs": 0
+                "obs": 0, 
+                "predicted": 2.579999999999999
               }, 
               "30": {
-                "fcasts": 12, 
-                "obs": 3
+                "obs": 3, 
+                "predicted": 2.94
               }, 
               "40": {
-                "fcasts": 0, 
-                "obs": 0
+                "obs": 0, 
+                "predicted": 0
               }, 
               "50": {
-                "fcasts": 6, 
-                "obs": 2
+                "obs": 2, 
+                "predicted": 2.52
               }, 
               "60": {
-                "fcasts": 6, 
-                "obs": 2
+                "obs": 2, 
+                "predicted": 3.3600000000000003
               }, 
               "70": {
-                "fcasts": 0, 
-                "obs": 0
+                "obs": 0, 
+                "predicted": 0
               }, 
               "80": {
-                "fcasts": 6, 
-                "obs": 4
+                "obs": 4, 
+                "predicted": 4.38
               }, 
               "90": {
-                "fcasts": 0, 
-                "obs": 0
+                "obs": 0, 
+                "predicted": 0
               }
             }
           }
@@ -4423,51 +4423,51 @@ export const testData = `{
         "fcasts": {}, 
         "stats": {
           "bin_count": {
-            "bias": 69.4117647059, 
+            "bias": 89.2727272727, 
             "bins": {
               "0": {
-                "fcasts": 24, 
-                "obs": 0
+                "obs": 0, 
+                "predicted": 0.0
               }, 
               "10": {
-                "fcasts": 84, 
-                "obs": 6
+                "obs": 0, 
+                "predicted": 4.259999999999994
               }, 
               "100": {
-                "fcasts": 0, 
-                "obs": 0
+                "obs": 0, 
+                "predicted": 0
               }, 
               "20": {
-                "fcasts": 18, 
-                "obs": 0
+                "obs": 0, 
+                "predicted": 2.759999999999999
               }, 
               "30": {
-                "fcasts": 24, 
-                "obs": 3
+                "obs": 3, 
+                "predicted": 5.46
               }, 
               "40": {
-                "fcasts": 6, 
-                "obs": 2
+                "obs": 2, 
+                "predicted": 1.86
               }, 
               "50": {
-                "fcasts": 0, 
-                "obs": 0
+                "obs": 0, 
+                "predicted": 0
               }, 
               "60": {
-                "fcasts": 12, 
-                "obs": 6
+                "obs": 6, 
+                "predicted": 6.4799999999999995
               }, 
               "70": {
-                "fcasts": 0, 
-                "obs": 0
+                "obs": 0, 
+                "predicted": 0
               }, 
               "80": {
-                "fcasts": 0, 
-                "obs": 0
+                "obs": 0, 
+                "predicted": 0
               }, 
               "90": {
-                "fcasts": 0, 
-                "obs": 0
+                "obs": 0, 
+                "predicted": 0
               }
             }
           }
@@ -4478,51 +4478,51 @@ export const testData = `{
         "fcasts": {}, 
         "stats": {
           "bin_count": {
-            "bias": 69.4117647059, 
+            "bias": 84.9090909091, 
             "bins": {
               "0": {
-                "fcasts": 0, 
-                "obs": 0
+                "obs": 0, 
+                "predicted": 0
               }, 
               "10": {
-                "fcasts": 96, 
-                "obs": 5
+                "obs": 0, 
+                "predicted": 5.159999999999991
               }, 
               "100": {
-                "fcasts": 0, 
-                "obs": 0
+                "obs": 0, 
+                "predicted": 0
               }, 
               "20": {
-                "fcasts": 48, 
-                "obs": 4
+                "obs": 3, 
+                "predicted": 6.8400000000000025
               }, 
               "30": {
-                "fcasts": 12, 
-                "obs": 2
+                "obs": 2, 
+                "predicted": 3.0599999999999996
               }, 
               "40": {
-                "fcasts": 0, 
-                "obs": 0
+                "obs": 0, 
+                "predicted": 0
               }, 
               "50": {
-                "fcasts": 12, 
-                "obs": 6
+                "obs": 6, 
+                "predicted": 5.28
               }, 
               "60": {
-                "fcasts": 0, 
-                "obs": 0
+                "obs": 0, 
+                "predicted": 0
               }, 
               "70": {
-                "fcasts": 0, 
-                "obs": 0
+                "obs": 0, 
+                "predicted": 0
               }, 
               "80": {
-                "fcasts": 0, 
-                "obs": 0
+                "obs": 0, 
+                "predicted": 0
               }, 
               "90": {
-                "fcasts": 0, 
-                "obs": 0
+                "obs": 0, 
+                "predicted": 0
               }
             }
           }
@@ -4533,51 +4533,51 @@ export const testData = `{
         "fcasts": {}, 
         "stats": {
           "bin_count": {
-            "bias": 87.0588235294, 
+            "bias": 114.909090909, 
             "bins": {
               "0": {
-                "fcasts": 0, 
-                "obs": 0
+                "obs": 0, 
+                "predicted": 0
               }, 
               "10": {
-                "fcasts": 78, 
-                "obs": 2
+                "obs": 0, 
+                "predicted": 4.980000000000001
               }, 
               "100": {
-                "fcasts": 0, 
-                "obs": 0
+                "obs": 0, 
+                "predicted": 0
               }, 
               "20": {
-                "fcasts": 54, 
-                "obs": 5
+                "obs": 1, 
+                "predicted": 7.740000000000005
               }, 
               "30": {
-                "fcasts": 24, 
-                "obs": 4
+                "obs": 4, 
+                "predicted": 5.760000000000002
               }, 
               "40": {
-                "fcasts": 0, 
-                "obs": 0
+                "obs": 0, 
+                "predicted": 0
               }, 
               "50": {
-                "fcasts": 12, 
-                "obs": 6
+                "obs": 6, 
+                "predicted": 5.160000000000001
               }, 
               "60": {
-                "fcasts": 0, 
-                "obs": 0
+                "obs": 0, 
+                "predicted": 0
               }, 
               "70": {
-                "fcasts": 0, 
-                "obs": 0
+                "obs": 0, 
+                "predicted": 0
               }, 
               "80": {
-                "fcasts": 0, 
-                "obs": 0
+                "obs": 0, 
+                "predicted": 0
               }, 
               "90": {
-                "fcasts": 0, 
-                "obs": 0
+                "obs": 0, 
+                "predicted": 0
               }
             }
           }
@@ -7939,11 +7939,11 @@ export const testData = `{
         "n": 1155
       }, 
       "ave_error": {
-        "error": 1.0834065004328945, 
+        "error": 1.0949966164502098, 
         "n": 1155
       }, 
       "bias": {
-        "bias": -0.48170582510822263, 
+        "bias": -0.47011570909090783, 
         "n": 1155
       }
     }, 
@@ -7972,7 +7972,7 @@ export const testData = `{
           "2019-10-05T16:00:00": 2.6166600000000004, 
           "2019-10-05T18:00:00": 2.0599920000000003, 
           "2019-10-05T22:00:00": 2.587772, 
-          "2019-10-06T00:00:00": 2.101108, 
+          "2019-10-06T00:00:00": 2.201108, 
           "2019-10-06T16:00:00": -1.5277799999999995, 
           "2019-10-06T19:00:00": 2.015552, 
           "2019-10-06T20:00:00": 2.615552, 
@@ -8179,11 +8179,11 @@ export const testData = `{
             "n": 165
           }, 
           "ave_error": {
-            "error": 1.111600751515152, 
+            "error": 1.1405096242424249, 
             "n": 165
           }, 
           "bias": {
-            "bias": 0.6030878303030301, 
+            "bias": 0.6319967030303028, 
             "n": 165
           }
         }
@@ -8217,7 +8217,7 @@ export const testData = `{
           "2019-10-05T18:00:00": -2.05556, 
           "2019-10-05T21:00:00": -2.070004, 
           "2019-10-05T23:00:00": -1.5133359999999998, 
-          "2019-10-06T00:00:00": 2.101108, 
+          "2019-10-06T00:00:00": 2.201108, 
           "2019-10-06T13:00:00": -1.585556, 
           "2019-10-06T15:00:00": -1.585556, 
           "2019-10-06T16:00:00": -3.0711119999999994, 
@@ -8422,11 +8422,11 @@ export const testData = `{
             "n": 165
           }, 
           "ave_error": {
-            "error": 1.0306462303030306, 
+            "error": 1.045292654545455, 
             "n": 165
           }, 
           "bias": {
-            "bias": -0.21792162424242437, 
+            "bias": -0.20327519999999996, 
             "n": 165
           }
         }
@@ -8660,11 +8660,11 @@ export const testData = `{
             "n": 165
           }, 
           "ave_error": {
-            "error": 0.9347610666666674, 
+            "error": 0.9395287272727278, 
             "n": 165
           }, 
           "bias": {
-            "bias": -0.38631869090909154, 
+            "bias": -0.381551030303031, 
             "n": 165
           }
         }
@@ -8902,11 +8902,11 @@ export const testData = `{
             "n": 165
           }, 
           "ave_error": {
-            "error": 1.0604650424242423, 
+            "error": 1.0705256000000005, 
             "n": 165
           }, 
           "bias": {
-            "bias": -0.6349582303030308, 
+            "bias": -0.6248976727272729, 
             "n": 165
           }
         }
@@ -9135,11 +9135,11 @@ export const testData = `{
             "n": 165
           }, 
           "ave_error": {
-            "error": 0.9506671030303038, 
+            "error": 0.9565660606060612, 
             "n": 165
           }, 
           "bias": {
-            "bias": -0.6079481212121217, 
+            "bias": -0.6020491636363638, 
             "n": 165
           }
         }
@@ -9388,11 +9388,11 @@ export const testData = `{
             "n": 165
           }, 
           "ave_error": {
-            "error": 1.3177378909090927, 
+            "error": 1.32155604848485, 
             "n": 165
           }, 
           "bias": {
-            "bias": -1.038735612121212, 
+            "bias": -1.0349174545454534, 
             "n": 165
           }
         }
@@ -9628,11 +9628,11 @@ export const testData = `{
             "n": 165
           }, 
           "ave_error": {
-            "error": 1.1779674181818185, 
+            "error": 1.1909976000000018, 
             "n": 165
           }, 
           "bias": {
-            "bias": -1.089146327272728, 
+            "bias": -1.076116145454546, 
             "n": 165
           }
         }
