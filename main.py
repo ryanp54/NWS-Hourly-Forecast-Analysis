@@ -1,22 +1,32 @@
+# -*- coding: utf-8 -*-
 """Main code for handling web requests."""
-
 from functools import wraps
-from datetime import date, datetime, timedelta
+from datetime import date
+from json import dumps
 
 from weather.ndb_setup import (
     RawForecast, RawObservation, Forecast, RecordError)
 from weather.nws_parse import GridData, ObservationData
 from weather.fcastanalysis import FcastAnalysis
+from weather.helpers import days_ago, short_isotime, gen_analysis_key
 
 from requests import get
-from flask import Flask, request, send_from_directory, jsonify
+from flask import Flask, request, jsonify, render_template, Markup, Response
+from google.appengine.api import memcache
 from requests_toolbelt.adapters import appengine
 
 appengine.monkeypatch()
 
-app = Flask(__name__)
+app = Flask(__name__, template_folder='app')
 app.config['JSONIFY_PRETTYPRINT_REGULAR'] = True
 app.config['JSON_AS_ASCII'] = False
+
+
+# Use json.dumps with options analagous to the JSONIFY_PRETTYPRINT_REGULAR
+# config set above.
+def dumps_prettyprint(item):
+    return dumps(item, sort_keys=True,
+                 indent=4, separators=(',', ': '))
 
 
 # Info for NWS API queries.
@@ -55,27 +65,18 @@ def allow_cors(f):
 
 # # # Routes # # #
 
+
 @app.route('/')
 @app.route('/index')
 def welcome():
-    return send_from_directory('app/build', 'index.html')
+    cached_analysis = memcache.get(gen_analysis_key(days_ago(8), days_ago(1)))
 
+    if cached_analysis:
+        analysis = Markup('`{}`'.format(cached_analysis))
+    else:
+        analysis = None
 
-@app.route('/{}/forecasts/record'.format(nws_wfo))
-@cron_only
-def record_forecast():
-    resp = get(
-        'https://api.weather.gov/gridpoints/' + nws_gridpoint,
-        headers=nws_headers)
-    grid_data = GridData(resp.json()['properties'])
-    if grid_data.made_t < days_ago(1):
-        stale = RecordError(
-            error_message='Forecast record fail: forecast was not current.')
-        stale.put()
-        resp.status_code = 500
-    elif resp.status_code >= 200 and resp.status_code < 300:
-        resp = jsonify(map(lambda key: key.id(), grid_data.to_ndb()))
-    return resp
+    return render_template('/build/index.html', initialdata=analysis)
 
 
 @app.route('/{}/forecasts/analyze'.format(nws_wfo))
@@ -83,9 +84,17 @@ def record_forecast():
 def analyze_fcasts():
     start = request.args['start']
     end = request.args['end']
-    analysis = FcastAnalysis(start, end).forjson()
 
-    return jsonify(analysis)
+    cache_key = gen_analysis_key(start, end)
+    cached_analysis = memcache.get(cache_key)
+
+    if cached_analysis is None:
+        analysis = dumps_prettyprint(FcastAnalysis(start, end).forjson())
+        memcache.add(cache_key, analysis, 60*60*24)
+    else:
+        analysis = cached_analysis
+
+    return Response(response=analysis, mimetype='application/json')
 
 
 @app.route('/{}/forecasts/'.format(nws_wfo))
@@ -107,24 +116,47 @@ def get_forecasts():
         sorted(resp, key=lambda x: [x['valid_time'], x['lead_days']]))
 
 
+@app.route('/{}/forecasts/record'.format(nws_wfo))
+@cron_only
+def record_forecast():
+    resp = get(
+        'https://api.weather.gov/gridpoints/' + nws_gridpoint,
+        headers=nws_headers)
+    grid_data = GridData(resp.json()['properties'])
+    if grid_data.made_t < days_ago(1):
+        stale = RecordError(
+            error_message='Forecast record fail: forecast was not current.')
+        stale.put()
+        resp.status_code = 500
+    elif resp.status_code >= 200 and resp.status_code < 300:
+        resp = jsonify(map(lambda key: key.id(), grid_data.to_ndb()))
+
+    return resp
+
+
 @app.route('/{}/observations/record'.format(nws_wfo))
 @cron_only
 def record_observation():
     resp = get(
         'https://api.weather.gov/stations/' + nws_station
-        + '/observations?end=' + days_ago(1).isoformat().split('.')[0]
-        + 'Z&start=' + days_ago(4).isoformat().split('.')[0] + 'Z',
+        + '/observations?end=' + short_isotime(days_ago(1))
+        + 'Z&start=' + short_isotime(days_ago(4)) + 'Z',
         headers=nws_headers
     )
     if resp.status_code >= 200 and resp.status_code < 300:
         obs_data = ObservationData(resp.json()['features'])
         obs_data.put_raw()
-        resp = jsonify(map(lambda key: key.id(), obs_data.to_ndb()))
+        put_keys = obs_data.to_ndb()
+
+        resp = jsonify(map(lambda key: key.id(), put_keys))
+
     if len(obs_data.ndb_obs) == 0:
         RecordError(
             error_message='Observation record fail: no new observations found.'
         ).put()
+
         resp.status_code = 500
+
     return resp
 
 
@@ -150,6 +182,7 @@ def get_rawforecasts(date_made=None):
         forecast = RawForecast.query(RawForecast.date == date_made).get()
     else:
         forecast = RawForecast.query().order(-RawForecast.date).get()
+
     return jsonify(
         forecast={'date': forecast.date, 'forecast': forecast.forecast})
 
@@ -163,13 +196,9 @@ def get_rawobservations(date_made=None):
         ).get()
     else:
         observation = RawObservation.query().order(-RawObservation.date).get()
+
     return jsonify(
         observation={
             'date': observation.date,
             'observation': observation.observation
         })
-
-
-# # # Helper functions # # #
-
-def days_ago(days): return datetime.utcnow() - timedelta(days=days)

@@ -1,3 +1,4 @@
+# -*- coding: utf-8 -*-
 __all__ = ['FcastAnalysis']
 
 import math
@@ -19,13 +20,13 @@ class FcastAnalysis(object):
         'temperature': {
             'prop_name': 'temperature',
             'display_name': 'Temperature',
-            'units': u'\u00b0C',
+            'units': '°C',
             'error_threshold': 1.67
         },
         'dewpoint': {
             'prop_name': 'dewpoint',
             'display_name': 'Dewpoint',
-            'units': u'\u00b0C',
+            'units': '°C',
             'error_threshold': 1.67
         },
         'precip_6hr': {

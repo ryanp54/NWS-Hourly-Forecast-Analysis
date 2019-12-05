@@ -74,6 +74,7 @@ function AnalysisChart({ analysis }) {
     activeDataDetail = (
       <ActiveDataDisplay
         displayInfo={{
+          // Overwrite units property of metadata to make y unitless.
           ...analysis.metadata,
           ...{ units: { x: analysis.metadata.units, y: '' } },
         }}
