@@ -37,7 +37,7 @@ export default function AnalysisPage({ apiURL, initialData=false }) {
 
   return (
     <Container>
-      <Row className='py-4'>
+      <Row className='py-5'>
         <ForecastRangeForm handleSubmit={fetchAnalysis} />
       </Row>
       {analysis
@@ -52,9 +52,20 @@ export default function AnalysisPage({ apiURL, initialData=false }) {
 function ForecastRangeForm({ handleSubmit }) {
   const [start, setStart] = useState(DEFAULT_START);
   const [end, setEnd] = useState(DEFAULT_END);
+  
+  let warning = '';
+  if (start === null || end === null) {
+    warning = 'Data not available for all selected dates.'
+  } else if (!start) {
+    warning = 'Select valid start date.'
+  } else if (!end) {
+    warning = 'Select valid end date.'
+  } else if (end < start) {
+    warning = 'Start date must be before end date.'
+  }
 
   return (
-    <Container className='pb-3'>
+    <Container>
       <Row className='d-flex justify-content-center'>
         <Col xs={'auto'}>
           <ForecastDayPicker
@@ -72,10 +83,18 @@ function ForecastRangeForm({ handleSubmit }) {
         </Col>
         <Col md={2} className='d-flex align-self-center justify-content-center mt-3'>
           <Button
-            onClick={() => handleSubmit(start, end)}
+            disabled={warning}
+            onClick={() => { if (!warning) handleSubmit(start, end) }}
           >
             Submit
           </Button>
+        </Col>
+      </Row>
+      <Row>
+        <Col>
+          <span className={'text-center text-danger position-absolute w-100'}>
+            {warning}
+          </span>
         </Col>
       </Row>
     </Container>
@@ -86,8 +105,6 @@ function ForecastRangeForm({ handleSubmit }) {
 // disabled day is entered. onChange will execute when a valid day is selected. rest props are
 // passed to the DayPickerInput.
 function ForecastDayPicker({ label, onChange, ...rest }) {
-  const [warned, setWarned] = useState(false);
-
   const disabledDays = {
     before: DATA_START,
     after: DATA_END,
@@ -100,25 +117,13 @@ function ForecastDayPicker({ label, onChange, ...rest }) {
           <label>
             {`${label}:`}
           </label>
-          <span className={'advisory float-right text-danger'}>
-            {` ${warned ? 'Check date.' : ''}`}
-          </span>
         </Col>
       </Row>
       <Row>
         <Col>
           <DayPickerInput
             {...rest}
-            onDayChange={(day, mod) => {
-              if (!day || (mod.disabled && !warned)) {
-                setWarned(true);
-              } else if (day && !mod.disabled) {
-                if (warned) {
-                  setWarned(false);
-                }
-                onChange(day);
-              }
-            }}
+            onDayChange={(day, mod) => { onChange(mod.disabled ? null : day) }}
             dayPickerProps={{ disabledDays }}
           />
         </Col>
