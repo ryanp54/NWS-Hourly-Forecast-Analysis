@@ -101,9 +101,8 @@ function ForecastRangeForm({ handleSubmit }) {
   );
 }
 
-// Wrap DayPickerInput with a label and warning that will be displayed when a
-// disabled day is entered. onChange will execute when a valid day is selected. rest props are
-// passed to the DayPickerInput.
+// Wrap DayPickerInput with a label. onChange will execute when a valid day is
+// selected. rest props are passed to the DayPickerInput.
 function ForecastDayPicker({ label, onChange, ...rest }) {
   const disabledDays = {
     before: DATA_START,
