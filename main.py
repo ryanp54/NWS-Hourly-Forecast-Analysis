@@ -72,11 +72,11 @@ def welcome():
     cached_analysis = memcache.get(gen_analysis_key(days_ago(8), days_ago(1)))
 
     if cached_analysis:
-        analysis = Markup('`{}`'.format(cached_analysis))
+        initialdata = Markup('`{}`'.format(cached_analysis))
     else:
-        analysis = None
+        initialdata = 'false'
 
-    return render_template('/build/index.html', initialdata=analysis)
+    return render_template('/build/index.html', initialdata=initialdata)
 
 
 @app.route('/{}/forecasts/analyze'.format(nws_wfo))
