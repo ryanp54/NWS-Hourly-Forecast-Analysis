@@ -12,7 +12,7 @@ import { getDaysAgo, getISODate } from './helpers';
 
 const DEFAULT_START = getDaysAgo(8);
 const DEFAULT_END = getDaysAgo(1);
-const DATA_START = new Date(2019, 1, 24);
+const DATA_START = new Date(2019, 0, 24);
 const DATA_END = getDaysAgo(1);
 
 export default function AnalysisPage({ apiURL, initialData=false }) {
