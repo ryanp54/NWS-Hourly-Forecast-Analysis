@@ -36,15 +36,23 @@ export default function AnalysisPage({ apiURL, initialData=false }) {
   );
 
   return (
-    <Container>
-      <Row className='py-5'>
-        <ForecastRangeForm handleSubmit={fetchAnalysis} />
-      </Row>
-      {analysis
-        ? <ForecastAnalysis analysis={analysis} />
-        : <Row> {statusMessage} </Row>
-      }
-    </Container>
+    <div>
+      <Container>
+        <Row className='py-5'>
+          <ForecastRangeForm handleSubmit={fetchAnalysis} />
+        </Row>
+      </Container>
+      <div>
+        {analysis
+          ? <ForecastAnalysis analysis={analysis} />
+          : (<Container>
+            <Row className='d-flex justify-content-center'>
+              {statusMessage}
+            </Row>
+          </Container>)
+        }
+      </div>
+    </div>
   );
 }
 

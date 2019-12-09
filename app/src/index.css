@@ -12,3 +12,23 @@ code {
   font-family: source-code-pro, Menlo, Monaco, Consolas, "Courier New",
     monospace;
 }
+
+.chart-container {
+  display: flex;
+  justify-content: center;
+  padding-right: 0px;
+  padding-left: 0px;
+  margin-right: auto;
+  margin-left: auto;
+}
+@media (min-width: 0px) {
+  .chart-container {
+    min-width: 640px;
+  }
+}
+@media (min-width: 992px) {
+  .chart-container {
+    max-width: 970px;
+  }
+}
+

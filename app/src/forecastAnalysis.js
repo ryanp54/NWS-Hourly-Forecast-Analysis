@@ -3,6 +3,7 @@ import React, { useState, useCallback } from 'react';
 import {
   Container,
   Row,
+  Col,
   Tabs,
   Tab,
 } from 'react-bootstrap';
@@ -35,9 +36,12 @@ export default function ForecastAnalysis({ analysis }) {
   ];
 
   return (
-    <Row>
+    <div>
       <Container>
-        <Tabs activeKey={weather} onSelect={(key) => setWeather(key)} justify className='h6'>
+        <Tabs justify className='flex-nowrap h6 w-100'
+          activeKey={weather}
+          onSelect={(key) => setWeather(key)}
+        >
           {workingWeathers.map((weatherType) => (
             <Tab
               eventKey={weatherType}
@@ -52,10 +56,10 @@ export default function ForecastAnalysis({ analysis }) {
           ))}
         </Tabs>
       </Container>
-      <AnalysisChart
+      <AnalysisChart className='w-100'
         analysis={analysis[weather]}
       />
-    </Row>
+    </div>
   );
 }
 
@@ -97,14 +101,14 @@ function AnalysisChart({ analysis }) {
   }
 
   return (
-    <Container>
-      <Row>
+    <Col>
+      <div className='chart-container'>
         {chart}
-      </Row>
-      <Row>
-        {activeDataDetail}
-      </Row>
-    </Container>
+      </div>
+      <Container>
+        <Row><Col xs={11}>{activeDataDetail}</Col></Row>
+      </Container>
+    </Col>
   );
 }
 
@@ -140,14 +144,14 @@ function ForecastChart({ analysis, onCursorChange }) {
   };
 
   return (
-    <Container className='pt-3'>
-      <Row>
+    <Row className='pt-3'>
+      <Col xs={12} className='w-100'>
         <TitleStatsDisplay
           activeDay={activeDay}
           analysis={analysis}
         />
-      </Row>
-      <Row>
+      </Col>
+      <Col xs={12} className='w-100'>
         <VictoryChart
           scale={{ x: 'time' }}
           domainPadding={{ y: 20 }}
@@ -209,8 +213,8 @@ function ForecastChart({ analysis, onCursorChange }) {
           {chartedData}
 
         </VictoryChart>
-      </Row>
-    </Container>
+      </Col>
+    </Row>
   );
 }
 const MemodForecastChart = React.memo(ForecastChart);
@@ -241,7 +245,7 @@ function getChartedData(analysis, activeDay) {
             y={1}
             style={{
               data: {
-                opacity: i >= 1 ? (9 - i) / 10 : 1.0,
+                opacity: i >= 1 ? (8 - i) / 10 : 1.0,
               },
             }}
           />
@@ -493,14 +497,14 @@ function ActiveDataDisplay({ displayInfo, data }) {
   }
 
   return (
-    <Container className='h6 font-weight-normal'>
+    <Col className='h6 font-weight-normal'>
       <Row className='pb-2'>
         {header}
       </Row>
       <Row>
         {formattedData}
       </Row>
-    </Container>
+    </Col>
   );
 }
 
