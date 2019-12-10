@@ -102,13 +102,23 @@ function AnalysisChart({ analysis }) {
 
   return (
     <Col>
-      <div className='chart-container'>
+      <ChartContainer>
         {chart}
-      </div>
+      </ChartContainer>
       <Container>
         <Row><Col xs={11}>{activeDataDetail}</Col></Row>
       </Container>
     </Col>
+  );
+}
+
+// Custom Container for Charts that has breakpoints to limit Charts to a reasonable size range.
+// See index.css for styling/breakpoints.
+function ChartContainer({ children }) {
+  return (
+    <div className='chart-container'>
+      {children}
+    </div>
   );
 }
 
