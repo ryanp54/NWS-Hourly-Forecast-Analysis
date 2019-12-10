@@ -22,13 +22,21 @@ export default function AnalysisPage({ apiURL, initialData = false }) {
   const [statusMessage, setStatusMessage] = useState('Select date range.');
 
   const fetchAnalysis = (start, end) => {
-    setStatusMessage('Retrieving...');
+    setStatusMessage('Retrieving. . .');
     setAnalysis(null);
+
+    const animateStatus = setInterval(() => {
+      setStatusMessage((previous) => previous.includes('. . .') ? 'Retrieving' : `${previous} .`);
+    }, 500);
 
     fetch(`${apiURL}start=${getISODate(start)}&end=${getISODate(end)}`)
       .then((resp) => resp.json())
-      .then((json) => { setAnalysis(json); })
-      .catch((error) => setStatusMessage(error.message));
+      .then((json) => {
+        setStatusMessage('');
+        setAnalysis(json);
+      })
+      .catch((error) => setStatusMessage(error.message))
+      .finally(() => clearInterval(animateStatus));
   };
 
   // Request analysis data on mount if not initialized with it.
@@ -47,11 +55,7 @@ export default function AnalysisPage({ apiURL, initialData = false }) {
       <div>
         {analysis
           ? <ForecastAnalysis analysis={analysis} />
-          : (<Container>
-            <Row className='d-flex justify-content-center'>
-              {statusMessage}
-            </Row>
-          </Container>)
+          : <StatusMessage message={statusMessage} />
         }
       </div>
     </div>
@@ -142,5 +146,17 @@ function ForecastDayPicker({ label, onChange, ...rest }) {
         </Col>
       </Row>
     </Col>
+  );
+}
+
+function StatusMessage({ message }) {
+  return (
+    <Container>
+      <Row className='d-flex justify-content-center'>
+        <Col xs={4} md={3} lg={2}>
+          {message}
+        </Col>
+      </Row>
+    </Container>
   );
 }
