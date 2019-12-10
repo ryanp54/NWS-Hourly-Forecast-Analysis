@@ -14,8 +14,10 @@ const DEFAULT_START = getDaysAgo(8);
 const DEFAULT_END = getDaysAgo(1);
 const DATA_START = new Date(2019, 0, 24);
 const DATA_END = getDaysAgo(1);
+const MAX_DAYS = 14;
+const MS_PER_DAY = 1000 * 60 * 60 * 24;
 
-export default function AnalysisPage({ apiURL, initialData=false }) {
+export default function AnalysisPage({ apiURL, initialData = false }) {
   const [analysis, setAnalysis] = useState(JSON.parse(initialData));
   const [statusMessage, setStatusMessage] = useState('Select date range.');
 
@@ -60,16 +62,20 @@ export default function AnalysisPage({ apiURL, initialData=false }) {
 function ForecastRangeForm({ handleSubmit }) {
   const [start, setStart] = useState(DEFAULT_START);
   const [end, setEnd] = useState(DEFAULT_END);
-  
+
+  const range = (new Date(end)) - (new Date(start));
+
   let warning = '';
   if (start === null || end === null) {
-    warning = 'Data not available for all selected dates.'
+    warning = 'Data not available for all selected dates.';
   } else if (!start) {
-    warning = 'Select valid start date.'
+    warning = 'Select valid start date.';
   } else if (!end) {
-    warning = 'Select valid end date.'
+    warning = 'Select valid end date.';
   } else if (end < start) {
-    warning = 'Start date must be before end date.'
+    warning = 'Start date must be before end date.';
+  } else if (range >= MAX_DAYS * MS_PER_DAY) {
+    warning = `Date range must be less than ${MAX_DAYS} days.`;
   }
 
   return (
