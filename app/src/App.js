@@ -74,7 +74,7 @@ function ForecastRangeForm({ handleSubmit }) {
     warning = 'Select valid start date.';
   } else if (!end) {
     warning = 'Select valid end date.';
-  } else if (end < start) {
+  } else if (end <= start) {
     warning = 'Start date must be before end date.';
   } else if (range >= MAX_DAYS * MS_PER_DAY) {
     warning = `Date range must be less than ${MAX_DAYS} days.`;
