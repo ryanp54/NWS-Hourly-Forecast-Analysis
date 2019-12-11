@@ -38,24 +38,29 @@ export default function ForecastAnalysis({ analysis }) {
   return (
     <div>
       <Container>
-        <Tabs justify className='flex-nowrap h6 w-100'
-          activeKey={weather}
-          onSelect={(key) => setWeather(key)}
-        >
-          {workingWeathers.map((weatherType) => (
-            <Tab
-              eventKey={weatherType}
-              title={
-                !Object.keys(analysis).includes(weatherType)
-                  ? toTitleCase(weatherType)
-                  : analysis[weatherType].metadata.display_name
-                }
-              key={weatherType}
-              disabled={!Object.keys(analysis).includes(weatherType)}
-            />
-          ))}
-        </Tabs>
+        <Row>
+          <Col>
+            <Tabs justify className='flex-nowrap h6 w-100'
+              activeKey={weather}
+              onSelect={(key) => setWeather(key)}
+            >
+              {workingWeathers.map((weatherType) => (
+                <Tab
+                  eventKey={weatherType}
+                  title={
+                    !Object.keys(analysis).includes(weatherType)
+                      ? toTitleCase(weatherType)
+                      : analysis[weatherType].metadata.display_name
+                    }
+                  key={weatherType}
+                  disabled={!Object.keys(analysis).includes(weatherType)}
+                />
+              ))}
+            </Tabs>
+          </Col>
+        </Row>
       </Container>
+      
       <AnalysisChart className='w-100'
         analysis={analysis[weather]}
       />
@@ -106,17 +111,31 @@ function AnalysisChart({ analysis }) {
         {chart}
       </ChartContainer>
       <Container>
-        <Row><Col xs={11}>{activeDataDetail}</Col></Row>
+        <Row>
+          <Col xs={11}
+            // Hold vertical space for element even when empty to avoid frequent
+            // addition/removal of scroll bar.
+            style={{ minHeight: '75px'}}>
+            {activeDataDetail}
+          </Col>
+        </Row>
       </Container>
     </Col>
   );
 }
 
-// Custom Container for Charts that has breakpoints to limit Charts to a reasonable size range.
-// See index.css for styling/breakpoints.
+// Custom Container for Charts limit Charts to a reasonable size range. Should not have
+// any regular Containers as its ancestors.
 function ChartContainer({ children }) {
   return (
-    <div className='chart-container'>
+    <div
+      style={{
+        minWidth: '680px',
+        maxWidth: '970px',
+        marginLeft: 'auto',
+        marginRight: 'auto',
+      }}
+    >
       {children}
     </div>
   );

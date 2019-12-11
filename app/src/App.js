@@ -47,11 +47,9 @@ export default function AnalysisPage({ apiURL, initialData = false }) {
 
   return (
     <div>
-      <Container>
-        <Row className='py-5'>
-          <ForecastRangeForm handleSubmit={fetchAnalysis} />
-        </Row>
-      </Container>
+      <div className='pt-2 pb-4'>
+        <ForecastRangeForm handleSubmit={fetchAnalysis} />
+      </div>
       <div>
         {analysis
           ? <ForecastAnalysis analysis={analysis} />
@@ -84,7 +82,7 @@ function ForecastRangeForm({ handleSubmit }) {
 
   return (
     <Container>
-      <Row className='d-flex justify-content-center'>
+      <Row className='justify-content-center'>
         <Col xs={'auto'}>
           <ForecastDayPicker
             label={'Start'}
@@ -99,7 +97,7 @@ function ForecastRangeForm({ handleSubmit }) {
             onChange={setEnd}
           />
         </Col>
-        <Col md={2} className='d-flex align-self-center justify-content-center mt-3'>
+        <Col md={2} className='align-self-center justify-content-center mt-3'>
           <Button
             disabled={warning}
             onClick={() => { if (!warning) handleSubmit(start, end) }}
