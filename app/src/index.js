@@ -14,4 +14,4 @@ ReactDOM.render(
 
 // Set to unregister() or register().
 // Learn more about service workers: https://bit.ly/CRA-PWA
-serviceWorker.register();
+serviceWorker.unregister();
