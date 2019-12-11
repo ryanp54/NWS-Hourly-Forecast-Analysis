@@ -14,11 +14,21 @@ export function toTitleCase(str) {
   );
 }
 
+export function removeTime(date) {
+  const justDate = new Date(date);
+  justDate.setHours(0);
+  justDate.setMinutes(0);
+  justDate.setSeconds(0);
+  justDate.setMilliseconds(0);
+
+  return justDate;
+}
+
 export function getDaysAgo(days) {
   const date = new Date();
   date.setDate(date.getDate() - days);
 
-  return date;
+  return removeTime(date);
 }
 
 // Return month/day if time is midnight, otherwise return the time (hh:mm).

@@ -8,7 +8,7 @@ import {
 } from 'react-bootstrap';
 
 import ForecastAnalysis from './forecastAnalysis';
-import { getDaysAgo, getISODate } from './helpers';
+import { getDaysAgo, getISODate, removeTime } from './helpers';
 
 const DEFAULT_START = getDaysAgo(8);
 const DEFAULT_END = getDaysAgo(1);
@@ -65,8 +65,8 @@ function ForecastRangeForm({ handleSubmit }) {
   const [start, setStart] = useState(DEFAULT_START);
   const [end, setEnd] = useState(DEFAULT_END);
 
-  const range = (new Date(end)) - (new Date(start));
-
+  const range = removeTime(new Date(end)) - removeTime(new Date(start));
+debugger
   let warning = '';
   if (start === null || end === null) {
     warning = 'Data not available for all selected dates.';
@@ -138,7 +138,7 @@ function ForecastDayPicker({ label, onChange, ...rest }) {
         <Col>
           <DayPickerInput
             {...rest}
-            onDayChange={(day, mod) => { onChange(mod.disabled ? null : day) }}
+            onDayChange={(day, mod) => { onChange(mod.disabled ? null : removeTime(day)) }}
             dayPickerProps={{ disabledDays }}
           />
         </Col>
