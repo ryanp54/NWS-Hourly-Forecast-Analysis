@@ -97,12 +97,12 @@ function ForecastRangeForm({ handleSubmit }) {
             onChange={setEnd}
           />
         </Col>
-        <Col md={2} className='align-self-center justify-content-center mt-3'>
+        <Col md={2} className='d-flex align-self-center justify-content-center mt-3'>
           <Button
             disabled={warning}
             onClick={() => { if (!warning) handleSubmit(start, end) }}
           >
-            Submit
+            {'Submit'}
           </Button>
         </Col>
       </Row>
