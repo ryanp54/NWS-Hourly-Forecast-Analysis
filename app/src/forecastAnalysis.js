@@ -1,4 +1,4 @@
-import React, { useState, useCallback } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 
 import {
   Container,
@@ -75,6 +75,9 @@ function AnalysisChart({ analysis }) {
 
   // Memomize callback so memoized children it's passed to don't render unnecessarily.
   const handleChange = useCallback(setActiveData, []);
+
+  // Make sure activeData gets reset when chart switches.
+  useEffect(() => setActiveData([]), [analysis]);
 
   let chart;
   let activeDataDetail;
