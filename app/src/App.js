@@ -125,6 +125,15 @@ function ForecastDayPicker({ label, onChange, ...rest }) {
     after: DATA_END,
   };
 
+  const onDayChange = (day, mod) => {
+    let newDay = mod.disabled ? null : day;
+    if (newDay instanceof Date) {
+      newDay = removeTime(newDay);
+    }
+
+    onChange(newDay);
+  }
+
   return (
     <Col className='pb-3'>
       <Row>
@@ -138,7 +147,7 @@ function ForecastDayPicker({ label, onChange, ...rest }) {
         <Col>
           <DayPickerInput
             {...rest}
-            onDayChange={(day, mod) => { onChange(mod.disabled ? null : removeTime(day)) }}
+            onDayChange={onDayChange}
             dayPickerProps={{ disabledDays }}
           />
         </Col>
