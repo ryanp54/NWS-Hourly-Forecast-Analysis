@@ -50,7 +50,7 @@ export default function AnalysisPage({ apiURL, initialData = false }) {
       <div className='pt-2 pb-4'>
         <ForecastRangeForm handleSubmit={fetchAnalysis} />
       </div>
-      <div>
+      <div className='pt-2'>
         {analysis
           ? <ForecastAnalysis analysis={analysis} />
           : <StatusMessage message={statusMessage} />
@@ -66,7 +66,7 @@ function ForecastRangeForm({ handleSubmit }) {
   const [end, setEnd] = useState(DEFAULT_END);
 
   const range = removeTime(new Date(end)) - removeTime(new Date(start));
-debugger
+
   let warning = '';
   if (start === null || end === null) {
     warning = 'Data not available for all selected dates.';
@@ -107,8 +107,8 @@ debugger
         </Col>
       </Row>
       <Row>
-        <Col>
-          <span className={'text-center text-danger position-absolute w-100'}>
+        <Col className='py-1'>
+          <span className='text-center text-danger position-absolute w-100'>
             {warning}
           </span>
         </Col>
@@ -149,9 +149,9 @@ function ForecastDayPicker({ label, onChange, ...rest }) {
 
 function StatusMessage({ message }) {
   return (
-    <Container>
-      <Row className='d-flex justify-content-center'>
-        <Col xs={4} md={3} lg={2}>
+    <Container className='py-5 pl-4'>
+      <Row className='justify-content-center'>
+        <Col xs={5} md={3} lg={2}>
           {message}
         </Col>
       </Row>

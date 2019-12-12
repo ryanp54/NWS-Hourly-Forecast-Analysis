@@ -40,12 +40,12 @@ export default function ForecastAnalysis({ analysis }) {
       <Container>
         <Row>
           <Col>
-            <Tabs justify className='flex-nowrap h6 w-100'
+            <Tabs justify className='h6'
               activeKey={weather}
               onSelect={(key) => setWeather(key)}
             >
               {workingWeathers.map((weatherType) => (
-                <Tab
+                <Tab className='align-center'
                   eventKey={weatherType}
                   title={
                     !Object.keys(analysis).includes(weatherType)
@@ -61,7 +61,7 @@ export default function ForecastAnalysis({ analysis }) {
         </Row>
       </Container>
       
-      <AnalysisChart className='w-100'
+      <AnalysisChart
         analysis={analysis[weather]}
       />
     </div>
@@ -133,7 +133,7 @@ function ChartContainer({ children }) {
   return (
     <div
       style={{
-        minWidth: '680px',
+        minWidth: '335px',
         maxWidth: '970px',
         marginLeft: 'auto',
         marginRight: 'auto',
@@ -441,9 +441,9 @@ function TitleStatsDisplay({ analysis, activeDay }) {
   return (
     <Container>
       <Row className='d-flex justify-content-center'>
-        <h6>
+        <h5>
           {`Forecast Accuracy: ${activeDayDisplayText}`}
-        </h6>
+        </h5>
       </Row>
       <Row className='d-flex justify-content-center'>
           {
@@ -616,9 +616,9 @@ function BinsChart({ analysis, onCursorChange }) {
   return (
     <Container className='pt-3'>
       <Row className='d-flex justify-content-center'>
-        <h6>
+        <h5>
           {'Precipitation Chance Bin Counts'}
-        </h6>
+        </h5>
       </Row>
       <Row className='d-flex justify-content-center'>
         <LabeledValue
