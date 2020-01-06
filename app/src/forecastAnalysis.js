@@ -22,6 +22,8 @@ import {
 
 import { toTitleCase, getMidnightDateOrTime } from './helpers';
 
+const fontFamily = 'inherit';
+
 // Allow navigation between the weather AnalysisCharts available via Tabs.
 export default function ForecastAnalysis({ analysis }) {
   const [weather, setWeather] = useState('temperature');
@@ -37,10 +39,10 @@ export default function ForecastAnalysis({ analysis }) {
 
   return (
     <div>
-      <Container>
+      <Container className='pb-3'>
         <Row>
           <Col>
-            <Tabs justify className='h6'
+            <Tabs justify
               activeKey={weather}
               onSelect={(key) => setWeather(key)}
             >
@@ -177,12 +179,10 @@ function ForecastChart({ analysis, onCursorChange }) {
 
   return (
     <Row className='pt-3'>
-      <Col xs={12} className='w-100'>
-        <TitleStatsDisplay
-          activeDay={activeDay}
-          analysis={analysis}
-        />
-      </Col>
+      <TitleStatsDisplay
+        activeDay={activeDay}
+        analysis={analysis}
+      />
       <Col xs={12} className='w-100'>
         <VictoryChart
           scale={{ x: 'time' }}
@@ -205,7 +205,7 @@ function ForecastChart({ analysis, onCursorChange }) {
             tickFormat={getMidnightDateOrTime}
             style={{
               ticks: { stroke: 'black', size: 5 },
-              tickLabels: { fontSize: 12 },
+              tickLabels: { fontSize: 9, fontFamily },
               grid: { stroke: 'grey' },
             }}
             offsetY={50}
@@ -217,7 +217,7 @@ function ForecastChart({ analysis, onCursorChange }) {
             label={analysis.metadata.units}
             style={{
               grid: { stroke: 'grey' },
-              tickLabels: { fontSize: 12 },
+              tickLabels: { fontSize: 9, fontFamily },
             }}
           />
 
@@ -239,7 +239,7 @@ function ForecastChart({ analysis, onCursorChange }) {
             }}
             gutter={10}
             symbolSpacer={5}
-            style={{ labels: { fontSize: 9 } }}
+            style={{ labels: { fontSize: 8, fontFamily } }}
           />
 
           {chartedData}
@@ -439,11 +439,14 @@ function TitleStatsDisplay({ analysis, activeDay }) {
   const stats = !activeDay ? analysis.cumulative_stats : analysis.lead_days[activeDay].stats;
 
   return (
-    <Container>
+    <Col xs={12} className='w-100'>
       <Row className='d-flex justify-content-center'>
-        <h5>
-          {`Forecast Accuracy: ${activeDayDisplayText}`}
-        </h5>
+        <h4>
+          Forecast Accuracy:
+        </h4>
+        <h4 className='ml-2'>
+          {activeDayDisplayText}
+        </h4>
       </Row>
       <Row className='d-flex justify-content-center'>
           {
@@ -454,7 +457,7 @@ function TitleStatsDisplay({ analysis, activeDay }) {
               Object.keys(stats[type]).map((prop) => {
                 if (type.includes(prop)) {
                   return (
-                    <LabeledValue
+                    <LabeledValue className='h5'
                      label={type}
                      value={stats[type][prop]}
                      units={analysis.metadata.units}
@@ -467,7 +470,7 @@ function TitleStatsDisplay({ analysis, activeDay }) {
             )).flat().filter(Boolean)
           }
       </Row>
-    </Container>
+    </Col>
   );
 }
 
@@ -529,7 +532,7 @@ function ActiveDataDisplay({ displayInfo, data }) {
   }
 
   return (
-    <Col className='h6 font-weight-normal'>
+    <Col>
       <Row className='pb-2'>
         {header}
       </Row>
@@ -614,20 +617,25 @@ function BinsChart({ analysis, onCursorChange }) {
   };
 
   return (
-    <Container className='pt-3'>
-      <Row className='d-flex justify-content-center'>
-        <h5>
-          {'Precipitation Chance Bin Counts'}
-        </h5>
-      </Row>
-      <Row className='d-flex justify-content-center'>
-        <LabeledValue
-          label='Bias'
-          value={activeAnalysis.bin_count.bias}
-          units='%'
-        />
-      </Row>
-      <Row>
+    <Row className='py-3'>
+      <Col xs={12} className='w-100'>
+        <Row className='d-flex justify-content-center'>
+          <h4>
+            Precipitation Chance
+          </h4>
+          <h4 className='ml-2'>
+            Bin Counts
+          </h4>
+        </Row>
+        <Row className='d-flex justify-content-center'>
+          <LabeledValue className='h5'
+            label='Bias'
+            value={activeAnalysis.bin_count.bias}
+            units='%'
+          />
+        </Row>
+      </Col>
+      <Col xs={12} className='w-100'>
         <VictoryChart
           padding={{
             top: 25, bottom: 50, left: 50, right: 75,
@@ -649,7 +657,7 @@ function BinsChart({ analysis, onCursorChange }) {
             }}
             gutter={10}
             symbolSpacer={5}
-            style={{ labels: { fontSize: 9 } }}
+            style={{ labels: { fontSize: 8, fontFamily } }}
             data={legendData}
             events={[{
               eventHandlers: {
@@ -665,22 +673,23 @@ function BinsChart({ analysis, onCursorChange }) {
           <VictoryAxis
             style={{
               ticks: { stroke: 'black', size: 5 },
-              tickLabels: { fontSize: 12 },
+              tickLabels: { fontSize: 11, fontFamily },
               grid: { stroke: 'grey' },
             }}
             label='Forecasted chance of pricipitation (%)'
             offsetY={50}
-            axisLabelComponent={<VictoryLabel dy={5} style={{ fontSize: 11 }} />}
+            axisLabelComponent={<VictoryLabel dy={10} style={{ fontSize: 10, fontFamily }} />}
           />
           <VictoryAxis
             dependentAxis
             crossAxis={false}
             style={{
               grid: { stroke: 'grey' },
-              tickLabels: { fontSize: 12 },
+              tickLabels: { fontSize: 11, fontFamily },
             }}
             label='Number of precipitation observations'
-            axisLabelComponent={<VictoryLabel dy={-5} angle={-90} style={{ fontSize: 11 }} />}
+            axisLabelComponent={<VictoryLabel dy={-10} angle={-90}
+              style={{ fontSize: 10, fontFamily }} />}
           />
 
           <VictoryGroup
@@ -702,8 +711,8 @@ function BinsChart({ analysis, onCursorChange }) {
           </VictoryGroup>
 
         </VictoryChart>
-      </Row>
-    </Container>
+      </Col>
+    </Row>
   );
 }
 const MemodBinsChart = React.memo(BinsChart);

@@ -9,6 +9,7 @@ import {
 
 import ForecastAnalysis from './forecastAnalysis';
 import { getDaysAgo, getISODate, removeTime } from './helpers';
+import './daypicker-custom.css'
 
 const DEFAULT_START = getDaysAgo(8);
 const DEFAULT_END = getDaysAgo(1);
@@ -158,7 +159,7 @@ function ForecastDayPicker({ label, onChange, ...rest }) {
 
 function StatusMessage({ message }) {
   return (
-    <Container className='py-5 pl-4'>
+    <Container className='h5 py-5 pl-4'>
       <Row className='justify-content-center'>
         <Col xs={5} md={3} lg={2}>
           {message}
