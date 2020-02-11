@@ -15,6 +15,7 @@ from flask import Flask, request, jsonify, render_template, Markup, Response
 from google.appengine.api import memcache
 from requests_toolbelt.adapters import appengine
 
+# Patch to allow requests get to work in dev.
 appengine.monkeypatch()
 
 app = Flask(__name__, template_folder='app')

@@ -120,7 +120,8 @@ function AnalysisChart({ analysis }) {
           <Col xs={11}
             // Hold vertical space for element even when empty to avoid frequent
             // addition/removal of scroll bar.
-            style={{ minHeight: '75px'}}>
+            style={{ minHeight: '75px'}}
+          >
             {activeDataDetail}
           </Col>
         </Row>

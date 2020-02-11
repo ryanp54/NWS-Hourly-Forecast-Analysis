@@ -16,6 +16,7 @@ const DEFAULT_END = getDaysAgo(1);
 const DATA_START = new Date(2019, 0, 24);
 const DATA_END = getDaysAgo(1);
 const MAX_DAYS = 14;
+
 const MS_PER_DAY = 1000 * 60 * 60 * 24;
 
 export default function AnalysisPage({ apiURL, initialData = false }) {
@@ -43,7 +44,7 @@ export default function AnalysisPage({ apiURL, initialData = false }) {
   // Request analysis data on mount if not initialized with it.
   useEffect(
     () => { if (!initialData) fetchAnalysis(DEFAULT_START, DEFAULT_END) },
-    []
+    [] // eslint-disable-line react-hooks/exhaustive-deps
   );
 
   return (
@@ -119,8 +120,8 @@ function ForecastRangeForm({ handleSubmit }) {
 }
 
 // Wrap DayPickerInput with a label. onChange will execute when a valid day is
-// selected. rest props are passed to the DayPickerInput.
-function ForecastDayPicker({ label, onChange, ...rest }) {
+// selected. inputProps are passed to the DayPickerInput.
+function ForecastDayPicker({ label, onChange, ...inputProps }) {
   const disabledDays = {
     before: DATA_START,
     after: DATA_END,
@@ -147,7 +148,7 @@ function ForecastDayPicker({ label, onChange, ...rest }) {
       <Row>
         <Col>
           <DayPickerInput
-            {...rest}
+            {...inputProps}
             onDayChange={onDayChange}
             dayPickerProps={{ disabledDays }}
           />
