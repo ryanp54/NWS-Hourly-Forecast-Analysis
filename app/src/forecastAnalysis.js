@@ -81,39 +81,14 @@ function AnalysisChart({ analysis }) {
   // Make sure activeData gets reset when chart switches.
   useEffect(() => setActiveData([]), [analysis]);
 
-  let chart;
-  let activeDataDetail;
-  if (analysis.metadata.prop_name === 'precip_chance') {
-    chart = <MemodBinsChart analysis={analysis} onCursorChange={handleChange} />;
-    activeDataDetail = (
-      <ActiveDataDisplay
-        displayInfo={{
-          // Overwrite units property of metadata to make y unitless.
-          ...analysis.metadata,
-          ...{ units: { x: analysis.metadata.units, y: '' } },
-        }}
-        data={activeData}
-      />
-    );
-  } else {
-    chart = (
-      <MemodForecastChart
-        analysis={analysis}
-        onCursorChange={handleChange}
-      />
-    );
-    activeDataDetail = (
-      <ActiveDataDisplay
-        displayInfo={analysis.metadata}
-        data={activeData}
-      />
-    );
-  }
-
   return (
     <Col>
       <ChartContainer>
-        {chart}
+        <Chart
+          analysis={analysis}
+          onCursorChange={handleChange}
+          type={analysis.metadata.prop_name}
+        />
       </ChartContainer>
       <Container>
         <Row>
@@ -122,7 +97,11 @@ function AnalysisChart({ analysis }) {
             // addition/removal of scroll bar.
             style={{ minHeight: '75px'}}
           >
-            {activeDataDetail}
+            <ActiveDataDisplay
+              displayInfo={analysis.metadata}
+              data={activeData}
+              type={analysis.metadata.prop_name}
+            />
           </Col>
         </Row>
       </Container>
@@ -147,19 +126,17 @@ function ChartContainer({ children }) {
   );
 }
 
-// Display visualization of analysis inlcuding a chart of forecasted vs observed values and
-// highlight areas where the forecast was considered inaccurate. The chart includes a
-// TitleStatsDisplay as a title that displays the forecast stats and an interactive legend that
-// allows selection of which lead day time forecast to display. When the mouse cursor moves over
-// the chart onCursorChange will be passed a list of the nearest data point objects.
-// Rendering is expensive. Use the memoized version available as MemodForecastChart.
-function ForecastChart({ analysis, onCursorChange }) {
+// A chart of forecasted vs observed values with highlighted areas where the forecast was
+// inaccurate, or a histogram for precip chance forecasts if type is 'precip_chance'. The
+// display includes a TitleStatsDisplay as a title that displays the forecast stats and an
+// interactive legend that allows selection of which lead day time forecast to display. When
+// the mouse cursor moves over the chart onCursorChange will be passed the nearest data points.
+const Chart = React.memo(function ({ analysis, onCursorChange, type }) {
   // All forecasts will be displayed when activeDay is falsey.
   const [activeDay, setActiveDay] = useState(null);
 
+  const isPrecipChance = type === 'precip_chance';
   const activeFcasts = getActiveFcasts(analysis, activeDay);
-  const chartedData = getChartedData(analysis, activeDay);
-  const legendData = getLegendData(analysis, chartedData);
 
   // Called by the onClick handler of the VictoryLegend.
   const toggleDisplayed = (labelName) => {
@@ -178,16 +155,55 @@ function ForecastChart({ analysis, onCursorChange }) {
     onCursorChange([]);
   };
 
-  return (
-    <Row className='pt-3'>
-      <TitleStatsDisplay
-        activeDay={activeDay}
-        analysis={analysis}
+  // Setup stats for TitleStatsDiplay
+  let stats = !activeDay ? analysis.cumulative_stats : analysis.lead_days[activeDay].stats;
+  if (isPrecipChance) {
+    stats = { bias: stats.bin_count };
+  }
+
+  const createLegend = function ChartLegend(data) {
+    return (
+      <VictoryLegend
+        x={20} y={10}
+        orientation='horizontal'
+        borderPadding={{
+          top: 0, bottom: 0, left: 5, right: 0,
+        }}
+        gutter={10}
+        symbolSpacer={5}
+        style={{ labels: { fontSize: 8, fontFamily } }}
+
+        data={data}
+        events={[{
+          eventHandlers: {
+            onClick: (evt, target) => {
+              if (target && target.datum) {
+                toggleDisplayed(target.datum.name);
+              }
+            },
+          },
+        }]}
       />
+    );
+  }; 
+
+  return (
+    <Row className='py-3'>
+      <TitleStatsDisplay
+        stats={stats}
+        units={analysis.metadata.units}
+      >
+        {
+         isPrecipChance
+          ? <PrecipChanceTitle />    
+          : <ForecastTitle activeDay={activeDay} />
+        }
+      </TitleStatsDisplay>
+
       <Col xs={12} className='w-100'>
         <VictoryChart
-          scale={{ x: 'time' }}
-          domainPadding={{ y: 20 }}
+          scale={!isPrecipChance && { x: 'time' }}
+          domainPadding={isPrecipChance ? { x: 6 } : { y: 20 }}
           padding={{
             top: 25, bottom: 50, left: 50, right: 75,
           }}
@@ -200,65 +216,140 @@ function ForecastChart({ analysis, onCursorChange }) {
             />
           }
         >
-
-          <VictoryAxis
-            tickCount={6}
-            tickFormat={getMidnightDateOrTime}
-            style={{
-              ticks: { stroke: 'black', size: 5 },
-              tickLabels: { fontSize: 9, fontFamily },
-              grid: { stroke: 'grey' },
-            }}
-            offsetY={50}
-          />
-          <VictoryAxis
-            dependentAxis
-            crossAxis={false}
-            axisLabelComponent={<VictoryLabel dx={-15} angle={0} />}
-            label={analysis.metadata.units}
-            style={{
-              grid: { stroke: 'grey' },
-              tickLabels: { fontSize: 9, fontFamily },
-            }}
-          />
-
-          <VictoryLegend
-            data={legendData}
-            events={[{
-              eventHandlers: {
-                onClick: (evt, target) => {
-                  if (target && target.datum) {
-                    toggleDisplayed(target.datum.name);
-                  }
-                },
-              },
-            }]}
-            x={25} y={10}
-            orientation='horizontal'
-            borderPadding={{
-              top: 0, bottom: 0, left: 5, right: 0,
-            }}
-            gutter={10}
-            symbolSpacer={5}
-            style={{ labels: { fontSize: 8, fontFamily } }}
-          />
-
-          {chartedData}
-
+        {
+          isPrecipChance
+            ? getPrecipChartComponents(analysis, activeDay, createLegend)
+            : getForecastChartComponents(analysis, activeDay, createLegend)
+        }
         </VictoryChart>
       </Col>
     </Row>
   );
-}
-const MemodForecastChart = React.memo(ForecastChart);
+});
 
 // Return an array of integers in string form that correspond to the active forecast lead days.
 function getActiveFcasts(analysis, activeDay) {
   return activeDay ? [activeDay] : Object.keys(analysis.lead_days);
 }
 
-// Generate and return an array of VictoryChart components to be charted on the ForecastChart.
-// ActiveDataDisplay, getLegendData, and the local toggleDisplay in ForecastChart depend on the
+// Get array of child components to complete VictoryChart for precip change histogram.
+function getPrecipChartComponents(analysis, activeDay, createLegend) {
+  const activeAnalysis = activeDay
+    ? analysis.lead_days[activeDay].stats
+    : analysis.cumulative_stats;
+
+  const data = Object.entries(activeAnalysis.bin_count.bins);
+  const legendData = Object.keys(analysis.lead_days).map((day) => (
+    {
+      name: `${day}-Day`,
+      symbol: {
+        opacity: activeDay === day ? 1.0 : 0.2,
+        fill: 'darkblue',
+        type: 'square',
+        cursor: 'pointer',
+      },
+      labels: {
+        opacity: activeDay === day ? 1.0 : 0.3,
+        cursor: 'pointer',
+      },
+    }
+  ));
+  legendData.push({
+    name: 'Cumulative',
+    symbol: {
+      opacity: !activeDay ? 1.0 : 0.2,
+      fill: 'darkblue',
+      type: 'square',
+      cursor: 'pointer',
+    },
+    labels: {
+      opacity: !activeDay ? 1.0 : 0.3,
+      cursor: 'pointer',
+    },
+  });
+  legendData.push({ name: 'Expected', symbol: { fill: 'lightblue', type: 'square' } }); 
+
+  return [
+    <VictoryAxis
+      style={{
+        ticks: { stroke: 'black', size: 5 },
+        tickLabels: { fontSize: 11, fontFamily },
+        grid: { stroke: 'grey' },
+      }}
+      label='Forecasted chance of pricipitation (%)'
+      offsetY={50}
+      axisLabelComponent={<VictoryLabel dy={10} style={{ fontSize: 10, fontFamily }} />}
+    />,
+    <VictoryAxis
+      dependentAxis
+      crossAxis={false}
+      style={{
+        grid: { stroke: 'grey' },
+        tickLabels: { fontSize: 11, fontFamily },
+      }}
+      label='Number of precipitation observations'
+      axisLabelComponent={<VictoryLabel dy={-10} angle={-90}
+        style={{ fontSize: 10, fontFamily }} />}
+    />,
+
+    createLegend(legendData),
+
+    <VictoryGroup
+      colorScale={['darkblue', 'lightblue']}
+      offset={5}
+    >
+      <VictoryBar
+        name='Observed occurances'
+        data={data}
+        x={0}
+        y={[1, 'obs']}
+      />
+      <VictoryBar
+        name='Predicted occurances'
+        data={data}
+        x={0}
+        y={[1, 'predicted']}
+      />
+    </VictoryGroup>
+  ];
+}
+
+// Get array of child components to complete VictoryChart for forecast analysis line graph.
+function getForecastChartComponents(analysis, activeDay, createLegend) {
+  const chartedData = getChartedData(analysis, activeDay);
+  const legendData = getLegendData(analysis, chartedData);  
+
+  return [
+    <VictoryAxis
+      tickCount={6}
+      tickFormat={getMidnightDateOrTime}
+      style={{
+        ticks: { stroke: 'black', size: 5 },
+        tickLabels: { fontSize: 9, fontFamily },
+        grid: { stroke: 'grey' },
+      }}
+      offsetY={50}
+      key='independent'
+    />,
+    <VictoryAxis
+      dependentAxis
+      crossAxis={false}
+      axisLabelComponent={<VictoryLabel dx={-15} angle={0} />}
+      label={analysis.metadata.units}
+      style={{
+        grid: { stroke: 'grey' },
+        tickLabels: { fontSize: 9, fontFamily },
+      }}
+      key='dependent'
+    />,
+
+    createLegend(legendData),
+    ...chartedData
+  ];
+}
+
+// Generate and return an array of VictoryChart components to be charted.
+// ActiveDataDisplay, getLegendData, and the local toggleDisplay in Chart depend on the
 // implementation details here, most significantly, the name and displayName prop values.
 function getChartedData(analysis, activeDay) {
   const chartedData = [];
@@ -359,7 +450,7 @@ function getChartedData(analysis, activeDay) {
 }
 
 // Generate the keys(data) for the chart legend. The name attributes that are set are especially
-// important as they are passed to toggleDisplay in ForecastChart.
+// important as they are passed to toggleDisplay in the Chart component.
 function getLegendData(analysis, chartedGroups) {
   const legendData = [];
   const forecastGroup = chartedGroups.find((group) => group.props.displayName === 'Forecast');
@@ -404,7 +495,7 @@ function getLegendData(analysis, chartedGroups) {
             opacity: isCharted ? style.data.opacity : 0.2,
             fill: style.data.stroke,
             cursor: 'pointer',
-            type: style.legendSymbol && style.legendSymbol.type ? style.legendSymbol.type : 'circle',
+            type: (style.legendSymbol && style.legendSymbol.type) || 'circle',
           },
           labels: {
             opacity: isCharted ? 1 : 0.2,
@@ -435,56 +526,75 @@ function Cursor({ x, scale }) {
   );
 }
 
-function TitleStatsDisplay({ analysis, activeDay }) {
-  const activeDayDisplayText = !activeDay ? 'Cumulative' : `${activeDay}-Day`;
-  const stats = !activeDay ? analysis.cumulative_stats : analysis.lead_days[activeDay].stats;
-
+function TitleStatsDisplay({ stats, units, children }) {
   return (
     <Col xs={12} className='w-100'>
       <Row className='d-flex justify-content-center'>
-        <h4>
-          Forecast Accuracy:
-        </h4>
-        <h4 className='ml-2'>
-          {activeDayDisplayText}
-        </h4>
+        {children}
       </Row>
       <Row className='d-flex justify-content-center'>
           {
-            // Stats objects contain multiple entries, but happen to always include the key of the
-            // parent in the entry that contains the actual value we want to display.
-            // TODO: refactor to be less obtuse.
-            Object.keys(stats).map((type) => (
-              Object.keys(stats[type]).map((prop) => {
-                if (type.includes(prop)) {
-                  return (
-                    <LabeledValue className='h5'
-                     label={type}
-                     value={stats[type][prop]}
-                     units={analysis.metadata.units}
-                     key={prop}
-                   />
-                  );
-                }
-                return false;
-              })
-            )).flat().filter(Boolean)
+            // Get LabeledValue for stats we're interested in.
+            [
+              ['accuracy', 'accuracy'], 
+              ['ave_error', 'error'], 
+              ['bias', 'bias']
+            ].reduce((compArr, [type, prop]) => {
+              if (stats[type] && stats[type][prop] !== undefined) {
+                compArr.push(
+                  <LabeledValue className='h5'
+                   label={type}
+                   value={stats[type][prop]}
+                   units={units}
+                   key={prop}
+                 />
+                );
+              }
+
+              return compArr;
+            }, [])
           }
       </Row>
     </Col>
   );
 }
 
+function ForecastTitle({ activeDay }) {
+  return (
+    <>
+      <h4>
+        Forecast Accuracy:
+      </h4>,
+      <h4 className='ml-2'>
+        {activeDay ? `${activeDay}-Day` : 'Cumulative'}
+      </h4>
+    </>
+  );
+}
+
+function PrecipChanceTitle() {
+  return (
+    <>
+      <h4>
+        Precipitation Chance
+      </h4>,
+      <h4 className='ml-2'>
+        Bin Counts
+      </h4>
+    </>
+  );
+}
+
 // Display active data points. displayInfo be a string or object with x and y attributes of the
 // units to be used with the data points and data should be a list of the datum objects.
-function ActiveDataDisplay({ displayInfo, data }) {
+function ActiveDataDisplay({ displayInfo, data, type }) {
   if (!data || data.length === 0) {
     return '';
   }
 
   let { units } = displayInfo;
   if (!units || Object.getPrototypeOf(units) !== Object.prototype) {
-    units = { x: units, y: units };
+    units = { x: units, y: type === 'precip_chance' ? '' : units };
   }
 
   // Format header text depending on type of charted data
@@ -566,154 +676,3 @@ function LabeledValue({
     </span>
   );
 }
-
-// Analogous to ForecastChart, but for precip probablity forcasts.
-// TODO: Refactor this and ForcastChart to eliminiate redundant code.
-function BinsChart({ analysis, onCursorChange }) {
-  // Cumulative stats will be displayed when activeDay is falsey.
-  const [activeDay, setActiveDay] = useState(null);
-
-  const activeAnalysis = activeDay
-    ? analysis.lead_days[activeDay].stats
-    : analysis.cumulative_stats;
-  const data = Object.entries(activeAnalysis.bin_count.bins);
-
-  const legendData = Object.keys(analysis.lead_days).map((day) => (
-    {
-      name: `${day}-Day`,
-      symbol: {
-        opacity: activeDay === day ? 1.0 : 0.2,
-        fill: 'darkblue',
-        type: 'square',
-        cursor: 'pointer',
-      },
-      labels: {
-        opacity: activeDay === day ? 1.0 : 0.3,
-        cursor: 'pointer',
-      },
-    }
-  ));
-  legendData.push({
-    name: 'Cumulative',
-    symbol: {
-      opacity: !activeDay ? 1.0 : 0.2,
-      fill: 'darkblue',
-      type: 'square',
-      cursor: 'pointer',
-    },
-    labels: {
-      opacity: !activeDay ? 1.0 : 0.3,
-      cursor: 'pointer',
-    },
-  });
-  legendData.push({ name: 'Expected', symbol: { fill: 'lightblue', type: 'square' } });
-
-  const toggleDisplayed = (labelName) => {
-    const [day] = labelName === 'Cumulative' ? [null] : labelName.split('-Day');
-    if (activeDay !== day && day !== 'Expected') {
-      setActiveDay(day);
-    }
-
-    onCursorChange([]);
-  };
-
-  return (
-    <Row className='py-3'>
-      <Col xs={12} className='w-100'>
-        <Row className='d-flex justify-content-center'>
-          <h4>
-            Precipitation Chance
-          </h4>
-          <h4 className='ml-2'>
-            Bin Counts
-          </h4>
-        </Row>
-        <Row className='d-flex justify-content-center'>
-          <LabeledValue className='h5'
-            label='Bias'
-            value={activeAnalysis.bin_count.bias}
-            units='%'
-          />
-        </Row>
-      </Col>
-      <Col xs={12} className='w-100'>
-        <VictoryChart
-          padding={{
-            top: 25, bottom: 50, left: 50, right: 75,
-          }}
-          containerComponent={
-            <VictoryVoronoiContainer
-              voronoiDimension='x'
-              labels={() => null}
-              labelComponent={<Cursor />}
-              onActivated={(points) => onCursorChange(points)}
-            />
-          }
-        >
-          <VictoryLegend
-            x={15} y={5}
-            orientation='horizontal'
-            borderPadding={{
-              top: 0, bottom: 0, left: 5, right: 0,
-            }}
-            gutter={10}
-            symbolSpacer={5}
-            style={{ labels: { fontSize: 8, fontFamily } }}
-            data={legendData}
-            events={[{
-              eventHandlers: {
-                onClick: (evt, target, i, legend) => {
-                  if (target && target.datum) {
-                    toggleDisplayed(target.datum.name);
-                  }
-                },
-              },
-            }]}
-          />
-
-          <VictoryAxis
-            style={{
-              ticks: { stroke: 'black', size: 5 },
-              tickLabels: { fontSize: 11, fontFamily },
-              grid: { stroke: 'grey' },
-            }}
-            label='Forecasted chance of pricipitation (%)'
-            offsetY={50}
-            axisLabelComponent={<VictoryLabel dy={10} style={{ fontSize: 10, fontFamily }} />}
-          />
-          <VictoryAxis
-            dependentAxis
-            crossAxis={false}
-            style={{
-              grid: { stroke: 'grey' },
-              tickLabels: { fontSize: 11, fontFamily },
-            }}
-            label='Number of precipitation observations'
-            axisLabelComponent={<VictoryLabel dy={-10} angle={-90}
-              style={{ fontSize: 10, fontFamily }} />}
-          />
-
-          <VictoryGroup
-            colorScale={['darkblue', 'lightblue']}
-            offset={5}
-          >
-            <VictoryBar
-              name='Observed occurances'
-              data={data}
-              x={0}
-              y={[1, 'obs']}
-            />
-            <VictoryBar
-              name='Predicted occurances'
-              data={data}
-              x={0}
-              y={[1, 'predicted']}
-            />
-          </VictoryGroup>
-
-        </VictoryChart>
-      </Col>
-    </Row>
-  );
-}
-const MemodBinsChart = React.memo(BinsChart);
