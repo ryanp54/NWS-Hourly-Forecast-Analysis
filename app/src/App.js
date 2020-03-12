@@ -7,7 +7,7 @@ import {
   Container, Row, Col, Button,
 } from 'react-bootstrap';
 
-import ForecastAnalysis from './forecastAnalysis';
+import ForecastAnalysis from './ForecastAnalysis';
 import { getDaysAgo, getISODate, removeTime } from './helpers';
 import './daypicker-custom.css'
 
