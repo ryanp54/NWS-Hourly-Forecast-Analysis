@@ -1,0 +1,10 @@
+.hold-space-v {
+	min-height: 100px;
+}
+
+.chart-container {
+	min-width: 335px;
+	max-width: 970px;
+	margin-left: auto;
+	margin-right: auto;
+}

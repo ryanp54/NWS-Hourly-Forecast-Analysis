@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React from 'react';
 
 import { Row, Col } from 'react-bootstrap';
 
@@ -26,7 +26,7 @@ export const ForecastChart = React.memo(
     activeDay,
     setActiveDay
   }) {
-    const chartedData = getChartedData(analysis, activeDay);
+    const chartedData = getChartedElements(analysis, activeDay);
     const legendData = getLegendData(analysis, chartedData);  
 
     return (
@@ -264,7 +264,7 @@ function getActiveFcasts(analysis, activeDay) {
 // Generate and return an array of VictoryChart components to be charted.
 // ActiveDataDisplay, getLegendData, and the local toggleDisplay in Chart depend on the
 // implementation details here, most significantly, the name and displayName prop values.
-function getChartedData(analysis, activeDay) {
+function getChartedElements(analysis, activeDay) {
   const chartedData = [];
   const activeFcasts = getActiveFcasts(analysis, activeDay);
 

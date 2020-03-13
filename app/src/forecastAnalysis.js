@@ -11,6 +11,7 @@ import {
 import { ForecastChart, PrecipChanceChart } from './charts';
 import LabeledValue from './LabeledValue';
 import { toTitleCase } from './helpers';
+import './forecast-analysis.css';
 
 // Allow navigation between the weather AnalysisCharts available via Tabs.
 export default function ForecastAnalysis({ analysis }) {
@@ -120,11 +121,7 @@ function AnalysisChart({ analysis }) {
       </ChartContainer>
       <Container>
         <Row>
-          <Col xs={11}
-            // Hold vertical space for element even when empty to avoid frequent
-            // addition/removal of scroll bar.
-            style={{ minHeight: '75px'}}
-          >
+          <Col xs={11} className='hold-space-v'>
             <ActiveDataDisplay
               displayInfo={displayInfo}
               data={activeData}
@@ -141,14 +138,7 @@ function AnalysisChart({ analysis }) {
 // any regular Containers as its ancestors.
 function ChartContainer({ children }) {
   return (
-    <div
-      style={{
-        minWidth: '335px',
-        maxWidth: '970px',
-        marginLeft: 'auto',
-        marginRight: 'auto',
-      }}
-    >
+    <div className='chart-container'>
       {children}
     </div>
   );
